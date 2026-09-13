@@ -307,13 +307,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     return (
                       <div
                         key={r.id}
-                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border flex items-center gap-1 ${
+                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border flex items-center justify-between gap-1 shadow-2xs ${
                           leaveType?.color.badge || 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}
                         title={`${staff?.name || ''} - ${leaveType?.name || ''} (${r.daysCount} วัน)`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${leaveType?.color.dot}`} />
-                        <span className="truncate">{staff?.name?.split(' ')[0] || 'บุคลากร'}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${leaveType?.color.dot}`} />
+                          <span className="truncate">{staff?.name?.split(' ')[0] || 'บุคลากร'}</span>
+                        </div>
+                        <span className="text-[9px] font-semibold opacity-80 shrink-0">
+                          {leaveType?.shortName}
+                        </span>
                       </div>
                     );
                   })}
@@ -336,15 +341,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <CalendarIcon className="w-4 h-4 text-indigo-600" />
           <span>สัญลักษณ์ประเภทการลา:</span>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200" />
-            <span className="text-rose-700 font-semibold">วันหยุดราชการ</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-rose-200 bg-rose-50 text-rose-800 text-[11px] font-medium shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-rose-200" />
+            <span className="font-semibold">วันหยุดราชการ</span>
           </div>
           {LEAVE_TYPES.map((t) => (
-            <div key={t.id} className="flex items-center gap-1.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${t.color.dot}`} />
-              <span className="text-slate-700 font-medium">{t.name}</span>
+            <div
+              key={t.id}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-medium shadow-2xs ${t.color.badge}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${t.color.dot}`} />
+              <span>{t.name}</span>
             </div>
           ))}
         </div>

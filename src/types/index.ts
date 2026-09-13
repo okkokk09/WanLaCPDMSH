@@ -21,6 +21,7 @@ export interface Staff {
   position: string;
   department: string;
   quotas: Record<string, number>; // leaveTypeId -> days quota
+  carriedOverVacationDays?: number; // วันลาพักผ่อนสะสมยกมา
   notes?: string;
   empId?: string;
   phone?: string;
@@ -51,4 +52,5 @@ export interface StaffLeaveSummary {
   totalQuota: number;
   totalUsed: number;
   totalRemaining: number;
+  carriedOverVacationDays?: number;
 }

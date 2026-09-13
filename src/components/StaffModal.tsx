@@ -22,6 +22,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
   const [quotas, setQuotas] = useState<Record<string, number>>(getDefaultQuotas());
+  const [carriedOverVacationDays, setCarriedOverVacationDays] = useState<number>(0);
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -35,12 +36,14 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           integerQuotas[k] = Math.max(0, Math.floor(v));
         });
         setQuotas(integerQuotas);
+        setCarriedOverVacationDays(initialStaff.carriedOverVacationDays || 0);
         setNotes(initialStaff.notes || '');
       } else {
         setName('');
         setPosition('');
         setDepartment(DEPARTMENTS[0]);
         setQuotas(getDefaultQuotas());
+        setCarriedOverVacationDays(0);
         setNotes('');
       }
     }
@@ -71,6 +74,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       position: position.trim() || 'บุคลากร',
       department: department.trim() || DEPARTMENTS[0],
       quotas: integerQuotas,
+      carriedOverVacationDays,
       notes: notes.trim(),
     };
 
@@ -199,6 +203,44 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Carried-over Vacation Days */}
+            <div className="mt-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-emerald-900 mb-0.5 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>วันลาพักผ่อนสะสมยกมา (Carried-over vacation days)</span>
+                  </label>
+                  <p className="text-[11px] text-emerald-700">
+                    วันลาพักผ่อนที่สะสมมาจากปีก่อนหน้า (จะนำไปรวมกับสิทธิลาพักผ่อนประจำปีนี้อัตโนมัติ)
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 w-full sm:w-32 shrink-0">
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    step="0.5"
+                    value={carriedOverVacationDays}
+                    onChange={(e) => setCarriedOverVacationDays(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="0"
+                    className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-center text-sm font-bold text-emerald-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs font-semibold text-emerald-800 shrink-0">วัน</span>
+                </div>
+              </div>
+
+              {/* Dynamic Vacation Calculation Preview */}
+              <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex flex-wrap items-center justify-between gap-2 text-[11px] text-emerald-800">
+                <span>
+                  สิทธิปีนี้: <b>{quotas['vacation'] ?? 0}</b> วัน + สะสมยกมา: <b>{carriedOverVacationDays}</b> วัน
+                </span>
+                <span className="font-bold bg-white text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                  รวมสิทธิลาพักผ่อนทั้งหมด: {(quotas['vacation'] ?? 0) + carriedOverVacationDays} วัน
+                </span>
+              </div>
             </div>
           </div>
 

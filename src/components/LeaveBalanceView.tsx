@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Search,
   FileSpreadsheet,
+  FileText,
   Printer,
   ShieldAlert,
   ShieldCheck,
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { WORK_GROUPS } from '../utils/constants';
-import { calculateStaffSummaries, exportSummaryToExcel } from '../utils/storage';
+import { calculateStaffSummaries, exportSummaryToExcel, exportSummaryToCsv } from '../utils/storage';
 
 interface LeaveBalanceViewProps {
   staffList: Staff[];
@@ -89,6 +90,13 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>ส่งออก Excel</span>
+          </button>
+          <button
+            onClick={() => exportSummaryToCsv(summaries)}
+            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>ส่งออก CSV</span>
           </button>
         </div>
       </div>
@@ -186,9 +194,9 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                   ลาป่วย <br />
                   <span className="text-[10px] font-normal text-rose-600">ใช้ / โควตา (คงเหลือ)</span>
                 </th>
-                <th className="py-3 px-3 text-center bg-amber-50/40 text-amber-800 border-r border-slate-100">
+                <th className="py-3 px-3 text-center bg-blue-50/40 text-blue-800 border-r border-slate-100">
                   ลากิจ <br />
-                  <span className="text-[10px] font-normal text-amber-600">ใช้ / โควตา (คงเหลือ)</span>
+                  <span className="text-[10px] font-normal text-blue-600">ใช้ / โควตา (คงเหลือ)</span>
                 </th>
                 <th className="py-3 px-3 text-center bg-emerald-50/40 text-emerald-800 border-r border-slate-100">
                   ลาพักผ่อน <br />
@@ -243,7 +251,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                     {/* Business Leave */}
                     <td className="py-3 px-3 text-center border-r border-slate-100">
                       <div className="font-semibold text-slate-800">
-                        <span className="text-amber-600">{bizUsed}</span> / {bizQuota}
+                        <span className="text-blue-600">{bizUsed}</span> / {bizQuota}
                       </div>
                       <div className="text-[11px] text-emerald-700 font-medium">
                         เหลือ {bizRemain} วัน
@@ -258,6 +266,11 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                       <div className="text-[11px] text-emerald-700 font-medium">
                         เหลือ {vacRemain} วัน
                       </div>
+                      {Boolean(s.staff.carriedOverVacationDays) && (
+                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                          (สะสมยกมา {s.staff.carriedOverVacationDays} วัน)
+                        </div>
+                      )}
                     </td>
 
                     {/* Other leaves */}

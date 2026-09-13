@@ -303,22 +303,34 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                               const remain = summary?.remainingByType[type.id] ?? quota;
                               const used = summary?.usedByType[type.id] ?? 0;
                               return (
-                                <div
-                                  key={type.id}
-                                  className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-center min-w-[80px]"
-                                  title={`${type.name}: สิทธิ์ ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน`}
-                                >
-                                  <div className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
-                                    <span>{type.shortName}</span>
+                                  <div
+                                    key={type.id}
+                                    className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-center min-w-[80px]"
+                                    title={`${type.name}: สิทธิ์รวม ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน${
+                                      type.id === 'vacation' && staff.carriedOverVacationDays
+                                        ? ` (สะสมยกมา ${staff.carriedOverVacationDays} วัน)`
+                                        : ''
+                                    }`}
+                                  >
+                                    <div className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
+                                      <span>{type.shortName}</span>
+                                      {type.id === 'vacation' && Boolean(staff.carriedOverVacationDays) && (
+                                        <span
+                                          className="text-[9px] text-emerald-600 font-bold ml-0.5"
+                                          title={`สะสมยกมา ${staff.carriedOverVacationDays} วัน`}
+                                        >
+                                          +{staff.carriedOverVacationDays}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-800 mt-0.5">
+                                      <span className="text-emerald-700">{remain}</span>
+                                      <span className="text-[10px] text-slate-400 font-normal">/{quota}</span>
+                                    </div>
                                   </div>
-                                  <div className="text-xs font-bold text-slate-800 mt-0.5">
-                                    <span className="text-emerald-700">{remain}</span>
-                                    <span className="text-[10px] text-slate-400 font-normal">/{quota}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
                           </div>
 
                           {/* Col 3: Usage Totals */}

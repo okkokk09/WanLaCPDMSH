@@ -372,7 +372,12 @@ export function getStaffList(): Staff[] {
         s.id === 'staff-1' || s.position.includes('สหกรณ์จังหวัดแม่ฮ่องสอน')
           ? 'สหกรณ์จังหวัด'
           : s.department;
-      return { ...s, department, quotas: integerQuotas };
+      return {
+        ...s,
+        department,
+        quotas: integerQuotas,
+        carriedOverVacationDays: s.carriedOverVacationDays || 0,
+      };
     });
   } catch (err) {
     console.error('Error reading staff from localStorage:', err);
@@ -423,6 +428,12 @@ export function calculateStaffSummaries(staffList: Staff[], records: LeaveRecord
     const remainingByType: Record<string, number> = {};
     const quotas: Record<string, number> = { ...getDefaultQuotas(), ...staff.quotas };
 
+    // Add carried-over vacation days to vacation quota if present
+    const carriedOverVacationDays = staff.carriedOverVacationDays || 0;
+    if (carriedOverVacationDays > 0) {
+      quotas['vacation'] = (quotas['vacation'] || 0) + carriedOverVacationDays;
+    }
+
     LEAVE_TYPES.forEach((t) => {
       usedByType[t.id] = 0;
     });
@@ -454,6 +465,7 @@ export function calculateStaffSummaries(staffList: Staff[], records: LeaveRecord
       totalQuota,
       totalUsed,
       totalRemaining: Math.max(0, totalQuota - totalUsed),
+      carriedOverVacationDays,
     };
   });
 }
@@ -500,6 +512,7 @@ export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
     'ชื่อ - นามสกุล',
     'ตำแหน่ง',
     'กลุ่มงาน',
+    'วันลาพักผ่อนสะสมยกมา (วัน)',
     ...LEAVE_TYPES.flatMap((t) => [`${t.name} (ใช้)`, `${t.name} (โควตา)`, `${t.name} (คงเหลือ)`]),
     'รวมใช้ทั้งหมด (วัน)',
     'รวมโควตาทั้งหมด (วัน)',
@@ -511,6 +524,7 @@ export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
       s.staff.name,
       s.staff.position,
       s.staff.department,
+      s.staff.carriedOverVacationDays || 0,
     ];
 
     LEAVE_TYPES.forEach((t) => {
@@ -531,6 +545,50 @@ export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
   XLSX.utils.book_append_sheet(wb, ws, 'สรุปวันลาคงเหลือ');
 
   XLSX.writeFile(wb, `สรุปวันลาคงเหลือ_${toDateString(new Date())}.xlsx`);
+}
+
+// Export staff balance summary to CSV (UTF-8 with BOM for Excel compatibility)
+export function exportSummaryToCsv(summaries: StaffLeaveSummary[]): void {
+  const headers = [
+    'ชื่อ - นามสกุล',
+    'ตำแหน่ง',
+    'กลุ่มงาน',
+    'วันลาพักผ่อนสะสมยกมา (วัน)',
+    ...LEAVE_TYPES.flatMap((t) => [`${t.name} (ใช้)`, `${t.name} (โควตา)`, `${t.name} (คงเหลือ)`]),
+    'รวมใช้ทั้งหมด (วัน)',
+    'รวมโควตาทั้งหมด (วัน)',
+    'รวมคงเหลือทั้งหมด (วัน)',
+  ];
+
+  const rows = summaries.map((s) => {
+    const row: (string | number)[] = [
+      `"${(s.staff.name || '').replace(/"/g, '""')}"`,
+      `"${(s.staff.position || '').replace(/"/g, '""')}"`,
+      `"${(s.staff.department || '').replace(/"/g, '""')}"`,
+      s.staff.carriedOverVacationDays || 0,
+    ];
+
+    LEAVE_TYPES.forEach((t) => {
+      row.push(s.usedByType[t.id] || 0);
+      row.push(s.quotas[t.id] || 0);
+      row.push(s.remainingByType[t.id] || 0);
+    });
+
+    row.push(s.totalUsed);
+    row.push(s.totalQuota);
+    row.push(s.totalRemaining);
+
+    return row.join(',');
+  });
+
+  const csvContent = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `สรุปวันลาคงเหลือ_${toDateString(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // Export leave records history to Excel

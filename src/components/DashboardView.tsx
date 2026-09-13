@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Users,
   CalendarCheck,
@@ -7,13 +7,15 @@ import {
   UserPlus,
   Calendar,
   FileSpreadsheet,
+  FileText,
+  ChevronDown,
   CheckCircle2,
   Trash2,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPE_MAP } from '../utils/constants';
 import { toDateString, formatThaiDateShort, isDateInLeaveRange } from '../utils/dateUtils';
-import { exportSummaryToExcel, calculateStaffSummaries } from '../utils/storage';
+import { exportSummaryToExcel, exportSummaryToCsv, calculateStaffSummaries } from '../utils/storage';
 
 interface DashboardViewProps {
   staffList: Staff[];
@@ -73,6 +75,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return calculateStaffSummaries(staffList, records);
   }, [staffList, records]);
 
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Welcome & Quick Actions Bar */}
@@ -102,6 +106,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <UserPlus className="w-4 h-4" />
             <span>เพิ่มบุคลากร</span>
           </button>
+
+          {/* Export to Excel/CSV Button & Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+              title="ส่งออกรายงานสรุปวันลาคงเหลือ"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export to Excel/CSV</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+
+            {exportDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setExportDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                    ดาวน์โหลดรายงานสรุปวันลาคงเหลือ
+                  </div>
+                  <button
+                    onClick={() => {
+                      exportSummaryToExcel(staffSummaries);
+                      setExportDropdownOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div>Export to Excel (.xlsx)</div>
+                      <div className="text-[10px] font-normal text-slate-400">สรุปวันลาคงเหลือทุกคน</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportSummaryToCsv(staffSummaries);
+                      setExportDropdownOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-sky-700 hover:bg-sky-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-sky-600 shrink-0" />
+                    <div>
+                      <div>Export to CSV (.csv)</div>
+                      <div className="text-[10px] font-normal text-slate-400">รองรับภาษาไทย UTF-8</div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -383,20 +440,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Quick Actions & Report Download */}
           <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 rounded-2xl border border-indigo-100 p-5">
-            <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">
-              รายงานและการส่งออก
+            <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>รายงานและการส่งออก</span>
+              <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-semibold">Summary</span>
             </h4>
-            <p className="text-xs text-slate-600 mb-3.5">
-              ดาวน์โหลดสรุปวันลาคงเหลือของบุคลากรเป็นไฟล์ Excel เพื่อพิมพ์หรือนำเสนอผู้บริหาร
+            <p className="text-xs text-slate-600 mb-3.5 leading-relaxed">
+              ดาวน์โหลดสรุปวันลาคงเหลือของบุคลากรทุกคนเพื่อพิมพ์ ตรวจสอบ หรือประมวลผลต่อ
             </p>
 
-            <button
-              onClick={() => exportSummaryToExcel(staffSummaries)}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>ดาวน์โหลด Excel สรุปวันลาคงเหลือ</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => exportSummaryToExcel(staffSummaries)}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export to Excel (.xlsx)</span>
+              </button>
+
+              <button
+                onClick={() => exportSummaryToCsv(staffSummaries)}
+                className="w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Export to CSV (.csv)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
