@@ -48,6 +48,8 @@ export function isWeekend(dateStr: string): boolean {
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 
+import { getHolidayInfo, isThaiPublicHoliday, type HolidayInfo } from './holidays';
+
 // Calculate workdays/leave days between start and end date
 export function calculateLeaveDays(
   startDateStr: string,
@@ -60,7 +62,7 @@ export function calculateLeaveDays(
 
   if (period === 'morning' || period === 'afternoon') {
     // Half day only applies to single date
-    if (skipWeekends && isWeekend(startDateStr)) return 0;
+    if (skipWeekends && (isWeekend(startDateStr) || isThaiPublicHoliday(startDateStr))) return 0;
     return 0.5;
   }
 
@@ -69,8 +71,12 @@ export function calculateLeaveDays(
   let days = 0;
 
   while (current <= end) {
+    const dStr = toDateString(current);
     const dayOfWeek = current.getDay();
-    if (!skipWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
+    const isWk = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHol = isThaiPublicHoliday(dStr);
+
+    if (!skipWeekends || (!isWk && !isHol)) {
       days += 1;
     }
     current.setDate(current.getDate() + 1);
@@ -86,6 +92,7 @@ export interface CalendarCell {
   isCurrentMonth: boolean;
   isToday: boolean;
   isWeekend: boolean;
+  holiday: HolidayInfo | null;
 }
 
 export function getMonthCalendarCells(year: number, month: number): CalendarCell[] {
@@ -111,6 +118,7 @@ export function getMonthCalendarCells(year: number, month: number): CalendarCell
       isCurrentMonth: false,
       isToday: dStr === todayStr,
       isWeekend: isWeekend(dStr),
+      holiday: getHolidayInfo(dStr),
     });
   }
 
@@ -124,6 +132,7 @@ export function getMonthCalendarCells(year: number, month: number): CalendarCell
       isCurrentMonth: true,
       isToday: dStr === todayStr,
       isWeekend: isWeekend(dStr),
+      holiday: getHolidayInfo(dStr),
     });
   }
 
@@ -138,6 +147,7 @@ export function getMonthCalendarCells(year: number, month: number): CalendarCell
       isCurrentMonth: false,
       isToday: dStr === todayStr,
       isWeekend: isWeekend(dStr),
+      holiday: getHolidayInfo(dStr),
     });
   }
 
@@ -149,7 +159,7 @@ export function isDateInLeaveRange(targetDate: string, record: { startDate: stri
   if (targetDate < record.startDate || targetDate > record.endDate) {
     return false;
   }
-  if (record.skipWeekends && isWeekend(targetDate)) {
+  if (record.skipWeekends && (isWeekend(targetDate) || isThaiPublicHoliday(targetDate))) {
     return false;
   }
   return true;

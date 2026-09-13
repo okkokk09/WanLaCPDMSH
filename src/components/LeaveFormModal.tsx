@@ -267,7 +267,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                 onChange={(e) => setSkipWeekends(e.target.checked)}
                 className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
               />
-              <span>ไม่นับรวมวันหยุดเสาร์ - อาทิตย์</span>
+              <span>ไม่นับรวมวันหยุดเสาร์ - อาทิตย์ และวันหยุดราชการ</span>
             </label>
 
             {/* Calculated Days pill */}

@@ -9,9 +9,11 @@ import {
   X,
   Clock,
   Search,
+  Flag,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP, WORK_GROUPS } from '../utils/constants';
+import { getHolidayInfo } from '../utils/holidays';
 import {
   getMonthCalendarCells,
   THAI_MONTHS_FULL,
@@ -107,6 +109,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         leaveType: LEAVE_TYPE_MAP.get(r.leaveTypeId),
       }));
   }, [detailDate, filteredRecords, staffMap]);
+
+  const detailHoliday = useMemo(() => {
+    return detailDate ? getHolidayInfo(detailDate) : null;
+  }, [detailDate]);
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
@@ -240,39 +246,56 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 className={`min-h-[105px] p-2 flex flex-col justify-between transition-colors cursor-pointer relative group ${
                   !cell.isCurrentMonth
                     ? 'bg-slate-50/50 text-slate-300'
+                    : cell.holiday
+                    ? 'bg-rose-50/35 hover:bg-rose-100/50'
                     : cell.isWeekend
                     ? 'bg-slate-50/30'
                     : 'bg-white hover:bg-indigo-50/30'
                 }`}
               >
-                {/* Cell Header: Day number & quick add */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                      cell.isToday
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : cell.isWeekend && cell.isCurrentMonth
-                        ? 'text-rose-500'
-                        : cell.isCurrentMonth
-                        ? 'text-slate-800'
-                        : 'text-slate-400'
-                    }`}
-                  >
-                    {cell.dayNumber}
-                  </span>
-
-                  {cell.isCurrentMonth && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenNewLeaveOnDate(cell.dateStr);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-indigo-100 text-indigo-600 rounded-md transition-all cursor-pointer"
-                      title="บันทึกการลาในวันนี้"
+                {/* Cell Header: Day number, holiday badge & quick add */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                        cell.isToday
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : cell.holiday && cell.isCurrentMonth
+                          ? 'bg-rose-500 text-white shadow-xs'
+                          : cell.isWeekend && cell.isCurrentMonth
+                          ? 'text-rose-500'
+                          : cell.isCurrentMonth
+                          ? 'text-slate-800'
+                          : 'text-slate-400'
+                      }`}
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                      {cell.dayNumber}
+                    </span>
+
+                    {cell.isCurrentMonth && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenNewLeaveOnDate(cell.dateStr);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-indigo-100 text-indigo-600 rounded-md transition-all cursor-pointer"
+                        title="บันทึกการลาในวันนี้"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Holiday Badge */}
+                  {cell.holiday && cell.isCurrentMonth && (
+                    <div
+                      className="mt-1 mb-0.5 px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-semibold truncate border border-rose-200 flex items-center gap-1 shadow-2xs"
+                      title={`วันหยุดราชการ: ${cell.holiday.name}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                      <span className="truncate">{cell.holiday.name}</span>
+                    </div>
                   )}
                 </div>
 
@@ -314,6 +337,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <span>สัญลักษณ์ประเภทการลา:</span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200" />
+            <span className="text-rose-700 font-semibold">วันหยุดราชการ</span>
+          </div>
           {LEAVE_TYPES.map((t) => (
             <div key={t.id} className="flex items-center gap-1.5">
               <span className={`w-2.5 h-2.5 rounded-full ${t.color.dot}`} />
@@ -345,6 +372,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
 
             <div className="p-6 space-y-4">
+              {/* Public Holiday Banner */}
+              {detailHoliday && (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-800">
+                  <div className="p-2 bg-rose-100 rounded-lg text-rose-600 shrink-0">
+                    <Flag className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 block">
+                      วันหยุดราชการ
+                    </span>
+                    <span className="text-sm font-bold text-rose-950">{detailHoliday.name}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 uppercase">
                   ผู้ที่ลาในวันนี้ ({detailRecords.length} คน)
