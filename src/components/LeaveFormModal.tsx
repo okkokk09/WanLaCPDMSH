@@ -142,8 +142,8 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -171,17 +171,17 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Step 1: Select Staff */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               บุคลากรผู้ขอลา <span className="text-rose-500">*</span>
             </label>
             <select
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all cursor-pointer"
               required
             >
               {staffList.map((staff) => (
-                <option key={staff.id} value={staff.id}>
+                <option key={staff.id} value={staff.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {staff.name} ({staff.department} • {staff.position})
                 </option>
               ))}
@@ -190,7 +190,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
 
           {/* Step 2: Select Leave Type */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               ประเภทการลา <span className="text-rose-500">*</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -204,16 +204,16 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                     onClick={() => setLeaveTypeId(type.id)}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-800">{type.shortName}</span>
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{type.shortName}</span>
                       <span className={`w-2 h-2 rounded-full ${type.color.dot}`} />
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-500 truncate">{type.name}</div>
-                    <div className="mt-1 text-[11px] font-medium text-indigo-700">
+                    <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">{type.name}</div>
+                    <div className="mt-1 text-[11px] font-medium text-indigo-700 dark:text-indigo-400">
                       เหลือ {quotaRemain} วัน
                     </div>
                   </button>
@@ -225,23 +225,23 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
           {/* Step 3: Dates & Period */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 วันที่เริ่มลา <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900"
                 required
               />
-              <span className="text-[11px] text-slate-500 mt-0.5 block">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
                 {formatThaiDateShort(startDate)}
               </span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 วันที่สิ้นสุดลา <span className="text-rose-500">*</span>
               </label>
               <input
@@ -249,10 +249,10 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                 value={endDate}
                 min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900"
                 required
               />
-              <span className="text-[11px] text-slate-500 mt-0.5 block">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
                 {formatThaiDateShort(endDate)}
               </span>
             </div>
@@ -260,18 +260,18 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
 
           {/* Options: Skip weekends */}
           <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={skipWeekends}
                 onChange={(e) => setSkipWeekends(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
               />
               <span>ไม่นับรวมวันหยุดเสาร์ - อาทิตย์ และวันหยุดราชการ</span>
             </label>
 
             {/* Calculated Days pill */}
-            <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-semibold">
+            <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold">
               <Clock className="w-3.5 h-3.5" />
               <span>คำนวณวันลา: {calculatedDays} วัน</span>
             </div>
@@ -279,8 +279,8 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
 
           {/* Quota warning or status info */}
           {isOverQuota ? (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">คำเตือน: ลาเกินโควตาคงเหลือ</span>
                 <p className="mt-0.5">
@@ -289,9 +289,9 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-200">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>โควตาคงเหลือเพียงพอ (คงเหลือ {remainingDays} วัน)</span>
               </div>
               <span className="font-medium">หลังลาจะเหลือ {Math.max(0, remainingDays - calculatedDays)} วัน</span>
@@ -300,7 +300,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
 
           {/* Reason input */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               เหตุผลการลา / หมายเหตุ
             </label>
             <textarea
@@ -308,16 +308,16 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               placeholder="ระบุเหตุผลการลา เช่น ไปพบแพทย์, ทำธุระจำเป็น, พักผ่อน..."
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
           </div>
 
           {/* Status selector */}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-xs font-semibold text-slate-700">สถานะการบันทึก:</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">สถานะการบันทึก:</span>
             <div className="flex items-center gap-2">
               {(['approved', 'pending'] as const).map((st) => (
-                <label key={st} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <label key={st} className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="radio"
                     name="status"
@@ -332,11 +332,11 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               ยกเลิก
             </button>

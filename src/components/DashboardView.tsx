@@ -125,8 +125,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className="fixed inset-0 z-10"
                   onClick={() => setExportDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
                     ดาวน์โหลดรายงานสรุปวันลาคงเหลือ
                   </div>
                   <button
@@ -134,12 +134,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       exportSummaryToExcel(staffSummaries);
                       setExportDropdownOpen(false);
                     }}
-                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <div>
                       <div>Export to Excel (.xlsx)</div>
-                      <div className="text-[10px] font-normal text-slate-400">สรุปวันลาคงเหลือทุกคน</div>
+                      <div className="text-[10px] font-normal text-slate-400 dark:text-slate-500">สรุปวันลาคงเหลือทุกคน</div>
                     </div>
                   </button>
                   <button
@@ -147,12 +147,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       exportSummaryToCsv(staffSummaries);
                       setExportDropdownOpen(false);
                     }}
-                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-sky-700 hover:bg-sky-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
-                    <FileText className="w-4 h-4 text-sky-600 shrink-0" />
+                    <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                     <div>
                       <div>Export to CSV (.csv)</div>
-                      <div className="text-[10px] font-normal text-slate-400">รองรับภาษาไทย UTF-8</div>
+                      <div className="text-[10px] font-normal text-slate-400 dark:text-slate-500">รองรับภาษาไทย UTF-8</div>
                     </div>
                   </button>
                 </div>
@@ -167,21 +167,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 1: Total Staff */}
         <div
           onClick={() => onNavigateTab('staff')}
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-700/60 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               บุคลากรทั้งหมด
             </span>
-            <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 group-hover:text-white transition-colors">
               <Users className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900">{staffList.length}</span>
-            <span className="text-xs text-slate-500">คน</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{staffList.length}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">คน</span>
           </div>
-          <p className="mt-2 text-xs text-indigo-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+          <p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
             <span>จัดการรายชื่อและโควตา</span> →
           </p>
         </div>
@@ -189,25 +189,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 2: People on Leave Today */}
         <div
           onClick={() => onNavigateTab('calendar')}
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-amber-200 transition-all cursor-pointer group"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700/60 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               ผู้ที่ลาวันนี้
             </span>
             <div className={`p-2.5 rounded-xl transition-colors ${
               leavesToday.length > 0
-                ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white'
-                : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
+                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white'
+                : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white'
             }`}>
               <CalendarCheck className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900">{leavesToday.length}</span>
-            <span className="text-xs text-slate-500">คน</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{leavesToday.length}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">คน</span>
           </div>
-          <p className="mt-2 text-xs text-slate-500 font-medium">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
             {leavesToday.length > 0 ? 'กำลังลาอยู่ในขณะนี้' : 'ไม่มีผู้ลา ทุกคนปฏิบัติงาน'}
           </p>
         </div>
@@ -215,21 +215,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 3: Days used this month */}
         <div
           onClick={() => onNavigateTab('records')}
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700/60 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               การลาในเดือนนี้
             </span>
-            <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Clock className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900">{totalDaysThisMonth}</span>
-            <span className="text-xs text-slate-500">วัน ({recordsThisMonth.length} รายการ)</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalDaysThisMonth}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน ({recordsThisMonth.length} รายการ)</span>
           </div>
-          <p className="mt-2 text-xs text-blue-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
             <span>ดูรายการบันทึกทั้งหมด</span> →
           </p>
         </div>
@@ -240,17 +240,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Left Column (2 cols): Today's Leaves & Recent History */}
         <div className="lg:col-span-2 space-y-6">
           {/* Today's Leaves Box */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   วันนี้ใครลาบ้าง? ({formatThaiDateShort(todayStr)})
                 </h3>
               </div>
               <button
                 onClick={() => onNavigateTab('calendar')}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 <span>เปิดดูปฏิทินทั้งเดือน</span>
@@ -258,17 +258,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {leavesToday.length === 0 ? (
-              <div className="py-8 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200">
-                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2.5">
+              <div className="py-8 px-4 text-center rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-2.5">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-800">วันนี้ไม่มีบุคลากรลา</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">วันนี้ไม่มีบุคลากรลา</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   ทุกคนปฏิบัติงานตามปกติ หรือยังไม่มีการบันทึกการลาในวันนี้
                 </p>
                 <button
                   onClick={onOpenNewLeave}
-                  className="mt-3 text-xs bg-white text-indigo-600 border border-indigo-200 font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  className="mt-3 text-xs bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   บันทึกการลาวันนี้
@@ -279,16 +279,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {leavesToday.map(({ record, staff, leaveType }) => (
                   <div
                     key={record.id}
-                    className={`p-3.5 rounded-xl border ${leaveType?.color.border || 'border-slate-200'} ${
-                      leaveType?.color.bg || 'bg-slate-50'
-                    } flex flex-col justify-between`}
+                    className={`p-3.5 rounded-xl border ${leaveType?.color.border || 'border-slate-200 dark:border-slate-700'} ${
+                      leaveType?.color.bg || 'bg-slate-50 dark:bg-slate-800/60'
+                    } dark:bg-slate-800/70 dark:border-slate-700/80 flex flex-col justify-between`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-xs font-bold text-slate-800 block">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
                           {staff?.name || 'ไม่พบข้อมูล'}
                         </span>
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
                           {staff?.department} • {staff?.position}
                         </span>
                       </div>
@@ -301,7 +301,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-black/5 text-xs text-slate-600">
+                    <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
                       <span className="truncate block">
                         {record.reason ? `“${record.reason}”` : 'ไม่ได้ระบุเหตุผล'}
                       </span>
@@ -313,24 +313,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Recent Records Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-900">รายการบันทึกล่าสุด</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">รายการบันทึกล่าสุด</h3>
               <button
                 onClick={() => onNavigateTab('records')}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
               >
                 <span>ดูทั้งหมด ({records.length})</span> →
               </button>
             </div>
 
             {recentRecords.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">ยังไม่มีประวัติการลา</div>
+              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">ยังไม่มีประวัติการลา</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase">
+                    <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 font-semibold uppercase">
                       <th className="pb-2.5">บุคลากร</th>
                       <th className="pb-2.5">ประเภทการลา</th>
                       <th className="pb-2.5">ช่วงวันที่ลา</th>
@@ -338,15 +338,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <th className="pb-2.5 text-right">จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {recentRecords.map((r) => {
                       const staff = staffMap.get(r.staffId);
                       const leaveType = LEAVE_TYPE_MAP.get(r.leaveTypeId);
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-2.5 font-medium text-slate-800">
+                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">
                             <div>{staff?.name || '-'}</div>
-                            <div className="text-[10px] text-slate-400">{staff?.department}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500">{staff?.department}</div>
                           </td>
                           <td className="py-2.5">
                             <span
@@ -357,11 +357,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               {leaveType?.name || r.leaveTypeId}
                             </span>
                           </td>
-                          <td className="py-2.5 text-slate-600">
+                          <td className="py-2.5 text-slate-600 dark:text-slate-300">
                             {formatThaiDateShort(r.startDate)}
                             {r.startDate !== r.endDate && ` - ${formatThaiDateShort(r.endDate)}`}
                           </td>
-                          <td className="py-2.5 font-semibold text-slate-700">
+                          <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200">
                             {r.daysCount} วัน
                           </td>
                           <td className="py-2.5 text-right">
@@ -371,7 +371,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onDeleteRecord(r.id);
                                 }
                               }}
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors cursor-pointer"
                               title="ลบรายการ"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -390,47 +390,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Right Column (1 col): Quick Shortcuts & Exports */}
         <div className="space-y-6">
           {/* Quick Shortcuts */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs">
+            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
               เมนูลัดการทำงาน
             </h4>
             <div className="space-y-2">
               <button
                 onClick={onOpenNewLeave}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold transition-colors cursor-pointer border border-indigo-100"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 hover:bg-indigo-50 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors cursor-pointer border border-indigo-100 dark:border-indigo-900/60"
               >
                 <span className="flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-indigo-600" />
+                  <PlusCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   บันทึกการลาใหม่
                 </span>
                 <span>→</span>
               </button>
               <button
                 onClick={() => onNavigateTab('calendar')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-slate-200"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
               >
                 <span className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-500" />
+                  <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   เปิดดูปฏิทินวันลา
                 </span>
                 <span>→</span>
               </button>
               <button
                 onClick={() => onNavigateTab('balance')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-slate-200"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
               >
                 <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-500" />
+                  <Clock className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   ตรวจสอบสรุปวันลาคงเหลือ
                 </span>
                 <span>→</span>
               </button>
               <button
                 onClick={() => onNavigateTab('staff')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-slate-200"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
               >
                 <span className="flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-slate-500" />
+                  <UserPlus className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   จัดการรายชื่อบุคลากร
                 </span>
                 <span>→</span>
@@ -439,12 +439,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Quick Actions & Report Download */}
-          <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 rounded-2xl border border-indigo-100 p-5">
-            <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+          <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 dark:from-slate-900 dark:to-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 p-5">
+            <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span>รายงานและการส่งออก</span>
-              <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-semibold">Summary</span>
+              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md font-semibold">Summary</span>
             </h4>
-            <p className="text-xs text-slate-600 mb-3.5 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 mb-3.5 leading-relaxed">
               ดาวน์โหลดสรุปวันลาคงเหลือของบุคลากรทุกคนเพื่อพิมพ์ ตรวจสอบ หรือประมวลผลต่อ
             </p>
 

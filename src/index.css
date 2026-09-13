@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -27,6 +29,19 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   background: #94a3b8;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 /* Print styles for reports */
 @media print {
   .no-print {
@@ -34,5 +49,6 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   }
   body {
     background: white !important;
+    color: black !important;
   }
 }

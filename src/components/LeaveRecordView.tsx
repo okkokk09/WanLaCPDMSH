@@ -79,10 +79,10 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">ประวัติและบันทึกการลาทั้งหมด</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">ประวัติและบันทึกการลาทั้งหมด</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             ค้นหา ตรวจสอบ และจัดการประวัติการลาของบุคลากรทุกคน
           </p>
         </div>
@@ -90,9 +90,9 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => exportRecordsToExcel(records, staffList)}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>ส่งออก Excel</span>
           </button>
           <button
@@ -106,7 +106,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search box */}
           <div className="relative">
@@ -116,7 +116,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาชื่อ, รหัส, เหตุผล..."
-              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
           </div>
 
@@ -125,11 +125,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="all">ทุกประเภทการลา</option>
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">ทุกประเภทการลา</option>
               {LEAVE_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>
+                <option key={t.id} value={t.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {t.name}
                 </option>
               ))}
@@ -141,11 +141,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="all">ทุกกลุ่มงาน</option>
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">ทุกกลุ่มงาน</option>
               {departments.map((dept) => (
-                <option key={dept} value={dept}>
+                <option key={dept} value={dept} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {dept}
                 </option>
               ))}
@@ -157,11 +157,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
             <select
               value={selectedStaffId}
               onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="all">บุคลากรทุกคน</option>
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">บุคลากรทุกคน</option>
               {staffList.map((s) => (
-                <option key={s.id} value={s.id}>
+                <option key={s.id} value={s.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {s.name} ({s.department})
                 </option>
               ))}
@@ -170,10 +170,10 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         </div>
 
         {/* Count summary bar */}
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
           <div>
-            พบข้อมูลการลาทั้งหมด <b className="text-slate-800">{filteredRecords.length}</b> รายการ (รวม{' '}
-            <b className="text-indigo-600">{totalFilteredDays}</b> วัน)
+            พบข้อมูลการลาทั้งหมด <b className="text-slate-800 dark:text-slate-200">{filteredRecords.length}</b> รายการ (รวม{' '}
+            <b className="text-indigo-600 dark:text-indigo-400">{totalFilteredDays}</b> วัน)
           </div>
           {(searchQuery || selectedType !== 'all' || selectedDept !== 'all' || selectedStaffId !== 'all') && (
             <button
@@ -183,7 +183,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                 setSelectedDept('all');
                 setSelectedStaffId('all');
               }}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer"
             >
               ล้างตัวกรองทั้งหมด
             </button>
@@ -192,14 +192,14 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
       </div>
 
       {/* Records Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
         {filteredRecords.length === 0 ? (
           <div className="py-16 px-4 text-center">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <Calendar className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-slate-700">ไม่พบรายการบันทึกการลา</h3>
-            <p className="text-xs text-slate-400 mt-1">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">ไม่พบรายการบันทึกการลา</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
               ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง หรือบันทึกรายการลาใหม่
             </p>
           </div>
@@ -207,7 +207,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider">
                   <th className="py-3 px-4">บุคลากร</th>
                   <th className="py-3 px-4">ประเภทการลา</th>
                   <th className="py-3 px-4">ช่วงวันที่ลา</th>
@@ -217,17 +217,17 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                   <th className="py-3 px-4 text-right">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredRecords.map((r) => {
                   const staff = staffMap.get(r.staffId);
                   const leaveType = LEAVE_TYPE_MAP.get(r.leaveTypeId);
 
                   return (
-                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                       {/* Staff */}
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-900">{staff?.name || '-'}</div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="font-semibold text-slate-900 dark:text-white">{staff?.name || '-'}</div>
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
                           {staff?.department} • {staff?.position}
                         </div>
                       </td>
@@ -245,23 +245,23 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                       </td>
 
                       {/* Date Range */}
-                      <td className="py-3.5 px-4 text-slate-700 font-medium">
+                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-medium">
                         {formatThaiDateShort(r.startDate)}
                         {r.startDate !== r.endDate && (
-                          <span className="block text-[11px] text-slate-400">
+                          <span className="block text-[11px] text-slate-400 dark:text-slate-500">
                             ถึง {formatThaiDateShort(r.endDate)}
                           </span>
                         )}
                       </td>
 
                       {/* Days count */}
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-900 dark:text-white">
                         {r.daysCount} วัน
                       </td>
 
                       {/* Reason */}
-                      <td className="py-3.5 px-4 max-w-xs truncate text-slate-600">
-                        {r.reason || <span className="text-slate-300">-</span>}
+                      <td className="py-3.5 px-4 max-w-xs truncate text-slate-600 dark:text-slate-300">
+                        {r.reason || <span className="text-slate-300 dark:text-slate-600">-</span>}
                       </td>
 
                       {/* Status */}
@@ -269,18 +269,18 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             r.status === 'approved'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                           }`}
                         >
                           {r.status === 'approved' ? (
                             <>
-                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                               อนุมัติ
                             </>
                           ) : (
                             <>
-                              <Clock className="w-3 h-3 text-amber-600" />
+                              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                               รอตรวจสอบ
                             </>
                           )}
@@ -295,7 +295,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                               onDeleteRecord(r.id);
                             }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                           title="ลบรายการ"
                         >
                           <Trash2 className="w-4 h-4" />

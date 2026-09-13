@@ -130,10 +130,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             แบ่งกลุ่มงานตามโครงสร้างสำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน พร้อมแสดงผลแบบแถวแนวนอน
           </p>
         </div>
@@ -148,7 +148,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       </div>
 
       {/* Filter, Search & Group Controls Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
           {/* Search box */}
           <div className="relative flex-1 max-w-sm">
@@ -158,7 +158,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาชื่อ, ตำแหน่ง, กลุ่มงาน..."
-              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
           </div>
 
@@ -167,11 +167,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="all">ทุกกลุ่มงาน ({departments.length})</option>
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">ทุกกลุ่มงาน ({departments.length})</option>
               {departments.map((dept) => (
-                <option key={dept} value={dept}>
+                <option key={dept} value={dept} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {dept}
                 </option>
               ))}
@@ -181,18 +181,18 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
         {/* View Controls & Stats */}
         <div className="flex items-center justify-between w-full md:w-auto gap-3 text-xs">
-          <span className="text-slate-500">
-            แสดง <b className="text-slate-800">{filteredStaff.length}</b> คน ({groupedStaff.length} กลุ่มงาน)
+          <span className="text-slate-500 dark:text-slate-400">
+            แสดง <b className="text-slate-800 dark:text-slate-200">{filteredStaff.length}</b> คน ({groupedStaff.length} กลุ่มงาน)
           </span>
 
-          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+          <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-3">
             <button
               onClick={collapseAll}
               disabled={!openDept}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
                 openDept
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
-                  : 'bg-slate-50 text-slate-400 cursor-not-allowed opacity-60'
+                  ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer'
+                  : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60'
               }`}
               title="ปิดกลุ่มงานที่เปิดอยู่"
             >
@@ -205,12 +205,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* Empty State */}
       {groupedStaff.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
             <Users className="w-6 h-6" />
           </div>
-          <h3 className="text-sm font-bold text-slate-700">ไม่พบบุคลากรตามเงื่อนไข</h3>
-          <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกตัวกรองกลุ่มงานใหม่</p>
+          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">ไม่พบบุคลากรตามเงื่อนไข</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกตัวกรองกลุ่มงานใหม่</p>
         </div>
       ) : (
         /* Work Groups List (Accordions - Single Open at a time) */
@@ -222,7 +222,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             return (
               <div
                 key={group.dept}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs transition-all"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs transition-all"
               >
                 {/* Accordion Group Header */}
                 <button
@@ -230,21 +230,21 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   onClick={() => toggleGroup(group.dept)}
                   className={`w-full p-4 sm:px-5 flex items-center justify-between transition-colors text-left cursor-pointer border-b ${
                     isOpen
-                      ? 'bg-slate-50/90 border-slate-200'
-                      : 'bg-white hover:bg-slate-50/70 border-transparent'
+                      ? 'bg-slate-50/90 dark:bg-slate-800/80 border-slate-200 dark:border-slate-800'
+                      : 'bg-white dark:bg-slate-900 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-9 h-9 rounded-xl ${groupColor.bg} border ${groupColor.border} ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
+                      className={`w-9 h-9 rounded-xl ${groupColor.bg} dark:bg-slate-800 border ${groupColor.border} dark:border-slate-700 ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
                     >
                       <Briefcase className="w-4.5 h-4.5" />
                     </div>
                     <div>
-                      <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug">
                         {group.dept}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         บุคลากร {group.staff.length} คน • ลารวม {group.totalUsed} วัน
                       </p>
                     </div>
@@ -252,13 +252,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                   <div className="flex items-center gap-2.5">
                     <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs ${groupColor.bg} ${groupColor.text} ${groupColor.border}`}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs ${groupColor.bg} dark:bg-slate-800 ${groupColor.text} ${groupColor.border} dark:border-slate-700`}
                     >
                       {group.staff.length} คน
                     </span>
-                    <div className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                    <div className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                       {isOpen ? (
-                        <ChevronUp className="w-5 h-5 text-indigo-600" />
+                        <ChevronUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                       ) : (
                         <ChevronDown className="w-5 h-5" />
                       )}
@@ -268,7 +268,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                 {/* Staff Horizontal Rows */}
                 {isOpen && (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {group.staff.map((staff) => {
                       const summary = summaryMap.get(staff.id);
                       const totalUsed = summary?.totalUsed || 0;
@@ -277,20 +277,20 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       return (
                         <div
                           key={staff.id}
-                          className="p-3.5 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 hover:bg-slate-50/80 transition-colors"
+                          className="p-3.5 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                         >
                           {/* Col 1: Avatar, Name & Position */}
                           <div className="flex items-center gap-3 min-w-[240px] max-w-md">
                             <div
-                              className={`w-10 h-10 rounded-xl ${groupColor.bg} border ${groupColor.border} ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
+                              className={`w-10 h-10 rounded-xl ${groupColor.bg} dark:bg-slate-800 border ${groupColor.border} dark:border-slate-700 ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
                             >
                               <User className="w-5 h-5" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                                 {staff.name}
                               </h4>
-                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1" title={staff.position}>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1" title={staff.position}>
                                 {staff.position}
                               </p>
                             </div>
@@ -305,28 +305,28 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                               return (
                                   <div
                                     key={type.id}
-                                    className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-center min-w-[80px]"
+                                    className="bg-slate-50 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center min-w-[80px]"
                                     title={`${type.name}: สิทธิ์รวม ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน${
                                       type.id === 'vacation' && staff.carriedOverVacationDays
                                         ? ` (สะสมยกมา ${staff.carriedOverVacationDays} วัน)`
                                         : ''
                                     }`}
                                   >
-                                    <div className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1">
                                       <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
                                       <span>{type.shortName}</span>
                                       {type.id === 'vacation' && Boolean(staff.carriedOverVacationDays) && (
                                         <span
-                                          className="text-[9px] text-emerald-600 font-bold ml-0.5"
+                                          className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5"
                                           title={`สะสมยกมา ${staff.carriedOverVacationDays} วัน`}
                                         >
                                           +{staff.carriedOverVacationDays}
                                         </span>
                                       )}
                                     </div>
-                                    <div className="text-xs font-bold text-slate-800 mt-0.5">
-                                      <span className="text-emerald-700">{remain}</span>
-                                      <span className="text-[10px] text-slate-400 font-normal">/{quota}</span>
+                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                      <span className="text-emerald-700 dark:text-emerald-400">{remain}</span>
+                                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">/{quota}</span>
                                     </div>
                                   </div>
                                 );
@@ -335,10 +335,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                           {/* Col 3: Usage Totals */}
                           <div className="flex items-center gap-2.5 text-xs">
-                            <div className="text-slate-500">
-                              ใช้ไป: <b className="text-slate-800">{totalUsed}</b> วัน
+                            <div className="text-slate-500 dark:text-slate-400">
+                              ใช้ไป: <b className="text-slate-800 dark:text-slate-200">{totalUsed}</b> วัน
                             </div>
-                            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg font-semibold shadow-2xs">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg font-semibold shadow-2xs">
                               คงเหลือรวม {totalRemaining} วัน
                             </div>
                           </div>
@@ -347,7 +347,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                           <div className="flex items-center gap-1.5 shrink-0 self-end xl:self-center">
                             <button
                               onClick={() => onEditStaff(staff)}
-                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-all cursor-pointer"
                               title="แก้ไขข้อมูลและกำหนดโควตาวันลา"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -363,7 +363,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                                   onDeleteStaff(staff.id);
                                 }
                               }}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-all cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 rounded-lg transition-all cursor-pointer"
                               title="ลบบุคลากร"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
