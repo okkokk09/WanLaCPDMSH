@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   UserPlus,
@@ -9,7 +9,6 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  ChevronsDown,
   ChevronsUp,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
@@ -37,7 +36,8 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  // Single-open accordion: only one work group is open at any time
+  const [openDept, setOpenDept] = useState<string | null>('สหกรณ์จังหวัด');
 
   // Calculate summaries to see each staff member's total used days
   const summaries = useMemo(() => {
@@ -102,23 +102,29 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     return groups;
   }, [filteredStaff, staffList, summaryMap]);
 
-  const toggleGroup = (dept: string) => {
-    setCollapsedGroups((prev) => ({
-      ...prev,
-      [dept]: !prev[dept],
-    }));
-  };
+  // Auto-expand selected department if user filters by department
+  useEffect(() => {
+    if (selectedDept !== 'all') {
+      setOpenDept(selectedDept);
+    }
+  }, [selectedDept]);
 
-  const expandAll = () => {
-    setCollapsedGroups({});
+  // Auto-expand first matching group when searching if current open group is no longer in results
+  useEffect(() => {
+    if (searchQuery.trim() && groupedStaff.length > 0) {
+      if (!groupedStaff.some((g) => g.dept === openDept)) {
+        setOpenDept(groupedStaff[0].dept);
+      }
+    }
+  }, [searchQuery, groupedStaff, openDept]);
+
+  // Accordion toggle: opening any group automatically closes all other groups
+  const toggleGroup = (dept: string) => {
+    setOpenDept((prev) => (prev === dept ? null : dept));
   };
 
   const collapseAll = () => {
-    const all: Record<string, boolean> = {};
-    departments.forEach((d) => {
-      all[d] = true;
-    });
-    setCollapsedGroups(all);
+    setOpenDept(null);
   };
 
   return (
@@ -181,20 +187,17 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
           <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
             <button
-              onClick={expandAll}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer text-xs font-medium"
-              title="ขยายทุกกลุ่มงาน"
-            >
-              <ChevronsDown className="w-3.5 h-3.5" />
-              <span>ขยายทั้งหมด</span>
-            </button>
-            <button
               onClick={collapseAll}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer text-xs font-medium"
-              title="ยุบทุกกลุ่มงาน"
+              disabled={!openDept}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+                openDept
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
+                  : 'bg-slate-50 text-slate-400 cursor-not-allowed opacity-60'
+              }`}
+              title="ปิดกลุ่มงานที่เปิดอยู่"
             >
               <ChevronsUp className="w-3.5 h-3.5" />
-              <span>ยุบทั้งหมด</span>
+              <span>ปิดกลุ่มงาน</span>
             </button>
           </div>
         </div>
@@ -210,11 +213,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกตัวกรองกลุ่มงานใหม่</p>
         </div>
       ) : (
-        /* Work Groups List (Accordions) */
+        /* Work Groups List (Accordions - Single Open at a time) */
         <div className="space-y-4">
           {groupedStaff.map((group) => {
             const groupColor = getWorkGroupColor(group.dept);
-            const isCollapsed = Boolean(collapsedGroups[group.dept]);
+            const isOpen = openDept === group.dept;
 
             return (
               <div
@@ -225,7 +228,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.dept)}
-                  className="w-full p-4 sm:px-5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-100/70 transition-colors text-left cursor-pointer border-b border-slate-100"
+                  className={`w-full p-4 sm:px-5 flex items-center justify-between transition-colors text-left cursor-pointer border-b ${
+                    isOpen
+                      ? 'bg-slate-50/90 border-slate-200'
+                      : 'bg-white hover:bg-slate-50/70 border-transparent'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -250,17 +257,17 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       {group.staff.length} คน
                     </span>
                     <div className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-                      {isCollapsed ? (
-                        <ChevronDown className="w-5 h-5" />
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5 text-indigo-600" />
                       ) : (
-                        <ChevronUp className="w-5 h-5" />
+                        <ChevronDown className="w-5 h-5" />
                       )}
                     </div>
                   </div>
                 </button>
 
                 {/* Staff Horizontal Rows */}
-                {!isCollapsed && (
+                {isOpen && (
                   <div className="divide-y divide-slate-100">
                     {group.staff.map((staff) => {
                       const summary = summaryMap.get(staff.id);
