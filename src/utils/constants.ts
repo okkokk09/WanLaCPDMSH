@@ -57,6 +57,10 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
     },
     description: 'การลาเพื่อคลอดบุตรและดูแลบุตรแรกเกิด',
   },
+];
+
+const FALLBACK_LEAVE_TYPES: LeaveTypeConfig[] = [
+  ...LEAVE_TYPES,
   {
     id: 'ordination',
     name: 'ลาอุปสมบท / พิธีทางศาสนา',
@@ -88,7 +92,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
 ];
 
 export const LEAVE_TYPE_MAP = new Map<LeaveTypeId, LeaveTypeConfig>(
-  LEAVE_TYPES.map((t) => [t.id, t])
+  FALLBACK_LEAVE_TYPES.map((t) => [t.id, t])
 );
 
 export const WORK_GROUPS = [
