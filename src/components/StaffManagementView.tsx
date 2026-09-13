@@ -4,13 +4,21 @@ import {
   UserPlus,
   Edit2,
   Trash2,
-  Shield,
   Briefcase,
   Users,
   User,
+  ChevronDown,
+  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
-import { LEAVE_TYPES, WORK_GROUPS, getWorkGroupColor } from '../utils/constants';
+import {
+  LEAVE_TYPES,
+  WORK_GROUPS,
+  WORK_GROUP_SUBTITLES,
+  getWorkGroupColor,
+} from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
 
 interface StaffManagementViewProps {
@@ -30,6 +38,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   // Calculate summaries to see each staff member's total used days
   const summaries = useMemo(() => {
@@ -61,6 +70,60 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     });
   }, [staffList, searchQuery, selectedDept]);
 
+  // Group filtered staff by work group (preserving official order)
+  const groupedStaff = useMemo(() => {
+    const groupOrder = Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
+    const groups: {
+      dept: string;
+      subtitle?: string;
+      staff: Staff[];
+      totalUsed: number;
+      totalRemaining: number;
+    }[] = [];
+
+    groupOrder.forEach((dept) => {
+      const staffInGroup = filteredStaff.filter((s) => s.department === dept);
+      if (staffInGroup.length > 0) {
+        let totalUsed = 0;
+        let totalRemaining = 0;
+        staffInGroup.forEach((s) => {
+          const sum = summaryMap.get(s.id);
+          totalUsed += sum?.totalUsed || 0;
+          totalRemaining += sum?.totalRemaining || 0;
+        });
+
+        groups.push({
+          dept,
+          subtitle: WORK_GROUP_SUBTITLES[dept],
+          staff: staffInGroup,
+          totalUsed,
+          totalRemaining,
+        });
+      }
+    });
+
+    return groups;
+  }, [filteredStaff, staffList, summaryMap]);
+
+  const toggleGroup = (dept: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [dept]: !prev[dept],
+    }));
+  };
+
+  const expandAll = () => {
+    setCollapsedGroups({});
+  };
+
+  const collapseAll = () => {
+    const all: Record<string, boolean> = {};
+    departments.forEach((d) => {
+      all[d] = true;
+    });
+    setCollapsedGroups(all);
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header */}
@@ -68,7 +131,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-900">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
           <p className="text-xs text-slate-500 mt-1">
-            เพิ่ม แก้ไข ลบ ข้อมูลบุคลากร และกำหนดสิทธิ์โควตาวันลาเฉพาะบุคคล
+            แบ่งกลุ่มงานตามโครงสร้างสำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน พร้อมแสดงผลแบบแถวแนวนอน
           </p>
         </div>
 
@@ -81,9 +144,9 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
+      {/* Filter, Search & Group Controls Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
           {/* Search box */}
           <div className="relative flex-1 max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -91,19 +154,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาชื่อ, รหัส, ตำแหน่ง..."
+              placeholder="ค้นหาชื่อ, ตำแหน่ง, กลุ่มงาน..."
               className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
             />
           </div>
 
           {/* Department filter */}
-          <div className="w-44">
+          <div className="w-48">
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="all">ทุกกลุ่มงาน ({staffList.length})</option>
+              <option value="all">ทุกกลุ่มงาน ({departments.length})</option>
               {departments.map((dept) => (
                 <option key={dept} value={dept}>
                   {dept}
@@ -113,127 +176,195 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           </div>
         </div>
 
-        <div className="text-xs text-slate-500">
-          แสดง <b className="text-slate-800">{filteredStaff.length}</b> จากทั้งหมด {staffList.length} คน
+        {/* View Controls & Stats */}
+        <div className="flex items-center justify-between w-full md:w-auto gap-3 text-xs">
+          <span className="text-slate-500">
+            แสดง <b className="text-slate-800">{filteredStaff.length}</b> คน ({groupedStaff.length} กลุ่มงาน)
+          </span>
+
+          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+            <button
+              onClick={expandAll}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer text-xs font-medium"
+              title="ขยายทุกกลุ่มงาน"
+            >
+              <ChevronsDown className="w-3.5 h-3.5" />
+              <span>ขยายทั้งหมด</span>
+            </button>
+            <button
+              onClick={collapseAll}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer text-xs font-medium"
+              title="ยุบทุกกลุ่มงาน"
+            >
+              <ChevronsUp className="w-3.5 h-3.5" />
+              <span>ยุบทั้งหมด</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Staff Cards Grid */}
-      {filteredStaff.length === 0 ? (
+      {/* Empty State */}
+      {groupedStaff.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
           <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
             <Users className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-bold text-slate-700">ไม่พบบุคลากรตามเงื่อนไข</h3>
-          <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มบุคลากรใหม่</p>
+          <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกตัวกรองกลุ่มงานใหม่</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredStaff.map((staff) => {
-            const summary = summaryMap.get(staff.id);
-            const totalUsed = summary?.totalUsed || 0;
-            const totalRemaining = summary?.totalRemaining || 0;
-            const groupColor = getWorkGroupColor(staff.department);
+        /* Work Groups List (Accordions) */
+        <div className="space-y-4">
+          {groupedStaff.map((group) => {
+            const groupColor = getWorkGroupColor(group.dept);
+            const isCollapsed = Boolean(collapsedGroups[group.dept]);
 
             return (
               <div
-                key={staff.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all flex flex-col justify-between"
+                key={group.dept}
+                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs transition-all"
               >
-                <div>
-                  {/* Top row: Avatar & Actions */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-11 h-11 rounded-xl ${groupColor.bg} border ${groupColor.border} ${groupColor.text} flex items-center justify-center shadow-2xs shrink-0 transition-colors`}
-                        title={`กลุ่มงาน: ${staff.department}`}
-                      >
-                        <User className="w-5.5 h-5.5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">
-                          {staff.name}
+                {/* Accordion Group Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.dept)}
+                  className="w-full p-4 sm:px-5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-100/70 transition-colors text-left cursor-pointer border-b border-slate-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl ${groupColor.bg} border ${groupColor.border} ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
+                    >
+                      <Briefcase className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
+                          {group.dept}
                         </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {staff.position}
-                        </p>
+                        {group.subtitle && (
+                          <span className="text-[11px] font-normal text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200/80">
+                            {group.subtitle}
+                          </span>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => onEditStaff(staff)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                        title="แก้ไขข้อมูล"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `คุณต้องการลบข้อมูลบุคลากร "${staff.name}" ใช่หรือไม่?\n(ประวัติการลาทั้งหมดของบุคลากรรายนี้จะถูกลบไปด้วย)`
-                            )
-                          ) {
-                            onDeleteStaff(staff.id);
-                          }
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="ลบบุคลากร"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        บุคลากร {group.staff.length} คน • ลารวม {group.totalUsed} วัน
+                      </p>
                     </div>
                   </div>
 
-                  {/* Details: Work Group & Position */}
-                  <div className="mt-3 space-y-1.5 text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className={`w-3.5 h-3.5 ${groupColor.text} shrink-0`} />
-                      <span className="font-medium text-slate-700">{staff.department}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs ${groupColor.bg} ${groupColor.text} ${groupColor.border}`}
+                    >
+                      {group.staff.length} คน
+                    </span>
+                    <div className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                      {isCollapsed ? (
+                        <ChevronDown className="w-5 h-5" />
+                      ) : (
+                        <ChevronUp className="w-5 h-5" />
+                      )}
                     </div>
                   </div>
+                </button>
 
-                  {/* Quotas breakdown chips */}
-                  <div className="mt-4 pt-3 border-t border-slate-100">
-                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-indigo-500" />
-                        โควตาวันลา (คงเหลือ / สิทธิ์)
-                      </span>
-                    </div>
+                {/* Staff Horizontal Rows */}
+                {!isCollapsed && (
+                  <div className="divide-y divide-slate-100">
+                    {group.staff.map((staff) => {
+                      const summary = summaryMap.get(staff.id);
+                      const totalUsed = summary?.totalUsed || 0;
+                      const totalRemaining = summary?.totalRemaining || 0;
 
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {LEAVE_TYPES.slice(0, 3).map((type) => {
-                        const quota = summary?.quotas[type.id] ?? type.defaultQuota;
-                        const remain = summary?.remainingByType[type.id] ?? quota;
-                        return (
-                          <div
-                            key={type.id}
-                            className="bg-slate-50 p-2 rounded-lg border border-slate-100 text-center"
-                          >
-                            <span className="text-[10px] text-slate-500 block truncate">
-                              {type.shortName}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800">
-                              {remain} <span className="text-[10px] font-normal text-slate-400">/{quota}</span>
-                            </span>
+                      return (
+                        <div
+                          key={staff.id}
+                          className="p-3.5 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 hover:bg-slate-50/80 transition-colors"
+                        >
+                          {/* Col 1: Avatar, Name & Position */}
+                          <div className="flex items-center gap-3 min-w-[240px] max-w-md">
+                            <div
+                              className={`w-10 h-10 rounded-xl ${groupColor.bg} border ${groupColor.border} ${groupColor.text} flex items-center justify-center shrink-0 shadow-2xs`}
+                            >
+                              <User className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                                {staff.name}
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1" title={staff.position}>
+                                {staff.position}
+                              </p>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Bottom summary bar */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-500">
-                    ใช้วันลาแล้ว: <b className="text-slate-700">{totalUsed} วัน</b>
-                  </span>
-                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
-                    คงเหลือรวม {totalRemaining} วัน
-                  </span>
-                </div>
+                          {/* Col 2: Leave Quotas (Horizontal compact pills) */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {LEAVE_TYPES.slice(0, 3).map((type) => {
+                              const quota = summary?.quotas[type.id] ?? type.defaultQuota;
+                              const remain = summary?.remainingByType[type.id] ?? quota;
+                              const used = summary?.usedByType[type.id] ?? 0;
+                              return (
+                                <div
+                                  key={type.id}
+                                  className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-center min-w-[80px]"
+                                  title={`${type.name}: สิทธิ์ ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน`}
+                                >
+                                  <div className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
+                                    <span>{type.shortName}</span>
+                                  </div>
+                                  <div className="text-xs font-bold text-slate-800 mt-0.5">
+                                    <span className="text-emerald-700">{remain}</span>
+                                    <span className="text-[10px] text-slate-400 font-normal">/{quota}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Col 3: Usage Totals */}
+                          <div className="flex items-center gap-2.5 text-xs">
+                            <div className="text-slate-500">
+                              ใช้ไป: <b className="text-slate-800">{totalUsed}</b> วัน
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg font-semibold shadow-2xs">
+                              คงเหลือรวม {totalRemaining} วัน
+                            </div>
+                          </div>
+
+                          {/* Col 4: Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0 self-end xl:self-center">
+                            <button
+                              onClick={() => onEditStaff(staff)}
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+                              title="แก้ไขข้อมูลและกำหนดโควตาวันลา"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>แก้ไข</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `คุณต้องการลบข้อมูลบุคลากร "${staff.name}" ใช่หรือไม่?\n(ประวัติการลาทั้งหมดของบุคลากรรายนี้จะถูกลบไปด้วย)`
+                                  )
+                                ) {
+                                  onDeleteStaff(staff.id);
+                                }
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-all cursor-pointer"
+                              title="ลบบุคลากร"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

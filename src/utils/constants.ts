@@ -92,16 +92,30 @@ export const LEAVE_TYPE_MAP = new Map<LeaveTypeId, LeaveTypeConfig>(
 );
 
 export const WORK_GROUPS = [
+  'สหกรณ์จังหวัด',
   'ฝ่ายบริหารทั่วไป',
   'กลุ่มจัดตั้งและส่งเสริมสหกรณ์',
-  'กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์',
   'กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์',
+  'กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์',
   'กลุ่มตรวจการสหกรณ์',
   'กลุ่มส่งเสริมสหกรณ์ 1',
   'กลุ่มส่งเสริมสหกรณ์ 2',
   'กลุ่มส่งเสริมสหกรณ์ 3',
   'กลุ่มส่งเสริมสหกรณ์ 4',
 ];
+
+export const WORK_GROUP_SUBTITLES: Record<string, string> = {
+  'สหกรณ์จังหวัด': 'ผู้บริหารหน่วยงาน',
+  'ฝ่ายบริหารทั่วไป': 'งานบริหาร งานสารบรรณ การเงินและพัสดุ',
+  'กลุ่มจัดตั้งและส่งเสริมสหกรณ์': 'งานจัดตั้งและส่งเสริมสหกรณ์ในจังหวัด',
+  'กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์': 'งานส่งเสริมธุรกิจ การตลาด และสินเชื่อ',
+  'กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์': 'งานพัฒนาการบริหารจัดการและเทคโนโลยี',
+  'กลุ่มตรวจการสหกรณ์': 'งานกำกับดูแล ตรวจการ และคุ้มครองระบบสหกรณ์',
+  'กลุ่มส่งเสริมสหกรณ์ 1': 'อำเภอเมืองแม่ฮ่องสอน',
+  'กลุ่มส่งเสริมสหกรณ์ 2': 'อำเภอขุนยวม แม่ลาน้อย',
+  'กลุ่มส่งเสริมสหกรณ์ 3': 'อำเภอปาย ปางมะผ้า',
+  'กลุ่มส่งเสริมสหกรณ์ 4': 'อำเภอแม่สะเรียง สบเมย',
+};
 
 export const DEPARTMENTS = WORK_GROUPS;
 
@@ -113,6 +127,12 @@ export interface GroupColorConfig {
 }
 
 export const WORK_GROUP_COLORS: Record<string, GroupColorConfig> = {
+  'สหกรณ์จังหวัด': {
+    bg: 'bg-indigo-50',
+    text: 'text-indigo-600',
+    border: 'border-indigo-200',
+    badge: 'bg-indigo-100 text-indigo-700',
+  },
   'ฝ่ายบริหารทั่วไป': {
     bg: 'bg-sky-50',
     text: 'text-sky-600',
@@ -125,17 +145,17 @@ export const WORK_GROUP_COLORS: Record<string, GroupColorConfig> = {
     border: 'border-emerald-200',
     badge: 'bg-emerald-100 text-emerald-700',
   },
-  'กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์': {
-    bg: 'bg-violet-50',
-    text: 'text-violet-600',
-    border: 'border-violet-200',
-    badge: 'bg-violet-100 text-violet-700',
-  },
   'กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์': {
     bg: 'bg-amber-50',
     text: 'text-amber-600',
     border: 'border-amber-200',
     badge: 'bg-amber-100 text-amber-700',
+  },
+  'กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์': {
+    bg: 'bg-violet-50',
+    text: 'text-violet-600',
+    border: 'border-violet-200',
+    badge: 'bg-violet-100 text-violet-700',
   },
   'กลุ่มตรวจการสหกรณ์': {
     bg: 'bg-rose-50',

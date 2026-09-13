@@ -23,7 +23,7 @@ export const INITIAL_STAFF: Staff[] = [
     id: 'staff-1',
     name: 'นายบรมัตถ์ ทิพกนก',
     position: 'สหกรณ์จังหวัดแม่ฮ่องสอน',
-    department: 'ฝ่ายบริหารทั่วไป',
+    department: 'สหกรณ์จังหวัด',
     quotas: getDefaultQuotas(),
     notes: 'สหกรณ์จังหวัดแม่ฮ่องสอน',
   },
@@ -368,7 +368,11 @@ export function getStaffList(): Staff[] {
       Object.entries(s.quotas || {}).forEach(([k, v]) => {
         integerQuotas[k] = Math.max(0, Math.floor(v));
       });
-      return { ...s, quotas: integerQuotas };
+      const department =
+        s.id === 'staff-1' || s.position.includes('สหกรณ์จังหวัดแม่ฮ่องสอน')
+          ? 'สหกรณ์จังหวัด'
+          : s.department;
+      return { ...s, department, quotas: integerQuotas };
     });
   } catch (err) {
     console.error('Error reading staff from localStorage:', err);
