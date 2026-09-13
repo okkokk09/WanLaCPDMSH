@@ -16,7 +16,6 @@ import type { Staff, LeaveRecord } from '../types';
 import {
   LEAVE_TYPES,
   WORK_GROUPS,
-  WORK_GROUP_SUBTITLES,
   getWorkGroupColor,
 } from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
@@ -75,7 +74,6 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     const groupOrder = Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
     const groups: {
       dept: string;
-      subtitle?: string;
       staff: Staff[];
       totalUsed: number;
       totalRemaining: number;
@@ -94,7 +92,6 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
         groups.push({
           dept,
-          subtitle: WORK_GROUP_SUBTITLES[dept],
           staff: staffInGroup,
           totalUsed,
           totalRemaining,
@@ -237,16 +234,9 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       <Briefcase className="w-4.5 h-4.5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
-                          {group.dept}
-                        </h3>
-                        {group.subtitle && (
-                          <span className="text-[11px] font-normal text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200/80">
-                            {group.subtitle}
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
+                        {group.dept}
+                      </h3>
                       <p className="text-xs text-slate-500 mt-0.5">
                         บุคลากร {group.staff.length} คน • ลารวม {group.totalUsed} วัน
                       </p>
