@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import base64
 import requests
@@ -53,7 +53,7 @@ def load_records():
     """Load leave records from records.json or fallback."""
     if os.path.exists(records_file):
         try:
-            with open(records_file, "r", encoding="utf-8") as f:
+            with open(records_file, "r", encoding="utf-8-sig") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
