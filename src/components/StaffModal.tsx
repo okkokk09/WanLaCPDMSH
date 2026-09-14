@@ -27,6 +27,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
       if (initialStaff) {
         setName(initialStaff.name);
         setPosition(initialStaff.position);
@@ -85,7 +86,14 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-start justify-center p-4 pt-8 sm:pt-14"
+    >
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-6 py-4 text-white flex items-center justify-between">
