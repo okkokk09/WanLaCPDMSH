@@ -2,6 +2,7 @@ import type { Staff, LeaveRecord, StaffLeaveSummary, UserRole } from '../types';
 import { LEAVE_TYPES } from './constants';
 import * as XLSX from 'xlsx';
 import { toDateString } from './dateUtils';
+import { sendRecordsToStreamlit } from './streamlitBridge';
 
 const STORAGE_KEYS = {
   STAFF: 'leave_system_staff_v5',
@@ -353,7 +354,34 @@ export const INITIAL_STAFF: Staff[] = [
   },
 ];
 
-export const INITIAL_RECORDS: LeaveRecord[] = [];
+export const INITIAL_RECORDS: LeaveRecord[] = [
+  {
+    id: 'rec-1789358900001',
+    staffId: 'staff-6',
+    leaveTypeId: 'vacation',
+    startDate: '2026-09-17',
+    endDate: '2026-09-18',
+    period: 'full',
+    daysCount: 2,
+    skipWeekends: true,
+    reason: 'ลาพักผ่อนประจำปี',
+    status: 'approved',
+    createdAt: '2026-09-14T04:00:00.000Z',
+  },
+  {
+    id: 'rec-1789358900002',
+    staffId: 'staff-5',
+    leaveTypeId: 'vacation',
+    startDate: '2026-09-21',
+    endDate: '2026-09-21',
+    period: 'full',
+    daysCount: 1,
+    skipWeekends: true,
+    reason: 'ลาพักผ่อนประจำปี',
+    status: 'approved',
+    createdAt: '2026-09-14T04:00:00.000Z',
+  },
+];
 
 export function getStaffList(): Staff[] {
   try {
@@ -397,22 +425,53 @@ export function getLeaveRecords(): LeaveRecord[] {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.RECORDS);
     if (!data) {
-      saveLeaveRecords(INITIAL_RECORDS);
+      saveLeaveRecords(INITIAL_RECORDS, false);
       return INITIAL_RECORDS;
     }
-    return JSON.parse(data);
+    const parsed: LeaveRecord[] = JSON.parse(data);
+    // If local storage is empty array but INITIAL_RECORDS has default items, use INITIAL_RECORDS
+    if (Array.isArray(parsed) && parsed.length === 0 && INITIAL_RECORDS.length > 0) {
+      saveLeaveRecords(INITIAL_RECORDS, false);
+      return INITIAL_RECORDS;
+    }
+    return parsed;
   } catch (err) {
     console.error('Error reading records from localStorage:', err);
     return INITIAL_RECORDS;
   }
 }
 
-export function saveLeaveRecords(records: LeaveRecord[]): void {
+export function saveLeaveRecords(records: LeaveRecord[], notifyStreamlit = true): void {
   try {
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
   } catch (err) {
     console.error('Error saving records to localStorage:', err);
   }
+  if (notifyStreamlit) {
+    sendRecordsToStreamlit(records);
+  }
+}
+
+export async function syncRecordsFromGitHub(): Promise<LeaveRecord[] | null> {
+  try {
+    let res = await fetch('./records.json?t=' + Date.now()).catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch(
+        'https://raw.githubusercontent.com/okkokk09/WanLaCPDMSH/main/records.json?t=' +
+          Date.now()
+      ).catch(() => null);
+    }
+    if (res && res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        saveLeaveRecords(data, false);
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('Sync from server/GitHub failed:', err);
+  }
+  return null;
 }
 
 export function resetAllData(): void {

@@ -1,0 +1,24 @@
+﻿[
+  {
+    "id": "rec-1789358900001",
+    "staffId": "staff-6",
+    "leaveTypeId": "vacation",
+    "startDate": "2026-09-17",
+    "endDate": "2026-09-18",
+    "daysCount": 2,
+    "reason": "ลาพักผ่อนประจำปี",
+    "status": "approved",
+    "createdAt": "2026-09-14T04:00:00.000Z"
+  },
+  {
+    "id": "rec-1789358900002",
+    "staffId": "staff-5",
+    "leaveTypeId": "vacation",
+    "startDate": "2026-09-21",
+    "endDate": "2026-09-21",
+    "daysCount": 1,
+    "reason": "ลาพักผ่อนประจำปี",
+    "status": "approved",
+    "createdAt": "2026-09-14T04:00:00.000Z"
+  }
+]

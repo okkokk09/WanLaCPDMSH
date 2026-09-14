@@ -20,7 +20,9 @@ import {
   setUserRole,
   getMyStaffId,
   setMyStaffId,
+  syncRecordsFromGitHub,
 } from './utils/storage';
+import { initStreamlitBridge, setStreamlitFrameHeight } from './utils/streamlitBridge';
 
 export const App: React.FC = () => {
   // User role state ('admin' | 'staff')
@@ -90,7 +92,34 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    // Initialize Streamlit Bridge for bidirectional communication
+    const cleanupStreamlit = initStreamlitBridge((args) => {
+      if (args.records && Array.isArray(args.records)) {
+        setRecords(args.records);
+        saveLeaveRecords(args.records, false);
+      }
+    });
+
+    // Background sync from GitHub raw content
+    syncRecordsFromGitHub().then((synced) => {
+      if (synced && synced.length > 0) {
+        setRecords(synced);
+      }
+    });
+
+    return () => {
+      cleanupStreamlit();
+    };
   }, []);
+
+  // Dynamically update Streamlit iframe frame height
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStreamlitFrameHeight();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeTab, records, staffList]);
 
   // Enforce role-based tab access
   useEffect(() => {
