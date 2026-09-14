@@ -132,11 +132,9 @@ export const App: React.FC = () => {
 
   // Role switching handlers
   const handleSelectStaff = (staffId: string) => {
-    const nextId = staffId ? staffId : null;
+    const nextId = staffId && staffId !== 'all' ? staffId : null;
     setMyStaffIdState(nextId);
-    if (nextId) {
-      setMyStaffId(nextId);
-    }
+    setMyStaffId(nextId);
   };
 
   const handleSwitchToStaff = () => {
@@ -297,6 +295,8 @@ export const App: React.FC = () => {
             onOpenNewLeaveOnDate={isAdmin ? handleOpenNewLeaveOnDate : undefined}
             onDeleteRecord={isAdmin ? handleDeleteLeaveRecord : undefined}
             isAdmin={isAdmin}
+            selectedStaffId={myStaffId}
+            onSelectStaff={handleSelectStaff}
           />
         )}
 

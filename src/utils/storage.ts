@@ -751,9 +751,13 @@ export function getMyStaffId(): string | null {
   }
 }
 
-export function setMyStaffId(staffId: string): void {
+export function setMyStaffId(staffId: string | null): void {
   try {
-    localStorage.setItem(MY_STAFF_ID_KEY, staffId);
+    if (staffId) {
+      localStorage.setItem(MY_STAFF_ID_KEY, staffId);
+    } else {
+      localStorage.removeItem(MY_STAFF_ID_KEY);
+    }
   } catch (err) {
     console.error('Error saving my staff ID:', err);
   }

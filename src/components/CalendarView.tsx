@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,6 +28,8 @@ interface CalendarViewProps {
   onOpenNewLeaveOnDate?: (dateStr: string) => void;
   onDeleteRecord?: (recordId: string) => void;
   isAdmin?: boolean;
+  selectedStaffId?: string | null;
+  onSelectStaff?: (staffId: string) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -36,16 +38,39 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onOpenNewLeaveOnDate,
   onDeleteRecord,
   isAdmin = true,
+  selectedStaffId: propSelectedStaffId,
+  onSelectStaff,
 }) => {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-11
   const [selectedDept, setSelectedDept] = useState<string>('all');
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(
+    propSelectedStaffId && propSelectedStaffId !== '' ? propSelectedStaffId : 'all'
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [detailDate, setDetailDate] = useState<string | null>(null);
 
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
+
+  // Sync with selectedStaffId prop from Navbar
+  useEffect(() => {
+    const targetId = propSelectedStaffId && propSelectedStaffId !== '' ? propSelectedStaffId : 'all';
+    setSelectedStaffId(targetId);
+    if (targetId !== 'all') {
+      const staff = staffMap.get(targetId);
+      if (staff && selectedDept !== 'all' && staff.department !== selectedDept) {
+        setSelectedDept('all');
+      }
+    }
+  }, [propSelectedStaffId, staffMap, selectedDept]);
+
+  const handleStaffChange = (newStaffId: string) => {
+    setSelectedStaffId(newStaffId);
+    if (onSelectStaff) {
+      onSelectStaff(newStaffId === 'all' ? '' : newStaffId);
+    }
+  };
 
   // Navigate months
   const handlePrevMonth = () => {
@@ -204,7 +229,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <Users className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
+              onChange={(e) => handleStaffChange(e.target.value)}
               className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden cursor-pointer"
             >
               <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">บุคลากรทุกคน</option>
@@ -219,6 +244,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Active Staff Filter Banner */}
+      {selectedStaffId !== 'all' && staffMap.get(selectedStaffId) && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl text-xs text-indigo-800 dark:text-indigo-200 shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <div className="p-1 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            <span>
+              กำลังแสดงผลเฉพาะวันลาของ: <strong className="font-bold underline underline-offset-2">{staffMap.get(selectedStaffId)?.name}</strong>
+              <span className="text-indigo-600/80 dark:text-indigo-400/80 ml-1.5 font-normal">
+                ({staffMap.get(selectedStaffId)?.department})
+              </span>
+            </span>
+          </div>
+          <button
+            onClick={() => handleStaffChange('all')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 transition-all cursor-pointer font-medium shadow-2xs"
+            title="ล้างตัวกรองและแสดงบุคลากรทุกคน"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>แสดงทุกคน</span>
+          </button>
+        </div>
+      )}
 
       {/* Calendar Grid */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
