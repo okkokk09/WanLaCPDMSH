@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, X, AlertCircle, KeyRound } from 'lucide-react';
+import { ShieldCheck, Lock, X, AlertCircle } from 'lucide-react';
 import { verifyAdminPassword } from '../utils/storage';
 
 interface AdminLoginModalProps {
@@ -95,14 +95,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               <span>{error}</span>
             </div>
           )}
-
-          {/* Friendly Default Password Hint */}
-          <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 rounded-xl text-xs text-amber-800 dark:text-amber-300">
-            <KeyRound className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            <span>
-              รหัสผ่านเริ่มต้นสำหรับผู้ดูแลระบบ: <b className="font-mono font-bold">admin</b> หรือ <b className="font-mono font-bold">1234</b>
-            </span>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2.5 pt-2">
