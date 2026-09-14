@@ -37,7 +37,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   // Single-open accordion: only one work group is open at any time
-  const [openDept, setOpenDept] = useState<string | null>('สหกรณ์จังหวัด');
+  const [openDept, setOpenDept] = useState<string | null>(null);
 
   // Calculate summaries to see each staff member's total used days
   const summaries = useMemo(() => {

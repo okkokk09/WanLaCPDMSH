@@ -25,7 +25,7 @@ import {
 export const App: React.FC = () => {
   // User role state ('admin' | 'staff')
   const [userRole, setUserRoleState] = useState<UserRole>(() => getUserRole());
-  const [myStaffId, setMyStaffIdState] = useState<string | null>(() => getMyStaffId());
+  const [myStaffId, setMyStaffIdState] = useState<string | null>(null);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
   // Active tab state - default based on role
@@ -103,13 +103,17 @@ export const App: React.FC = () => {
 
   // Role switching handlers
   const handleSelectStaff = (staffId: string) => {
-    setMyStaffIdState(staffId);
-    setMyStaffId(staffId);
+    const nextId = staffId ? staffId : null;
+    setMyStaffIdState(nextId);
+    if (nextId) {
+      setMyStaffId(nextId);
+    }
   };
 
   const handleSwitchToStaff = () => {
     setUserRoleState('staff');
     setUserRole('staff');
+    setMyStaffIdState(null);
     setActiveTab('calendar');
   };
 

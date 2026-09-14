@@ -48,7 +48,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
         setReason(initialRecord.reason);
         setStatus(initialRecord.status);
       } else {
-        setStaffId(staffList.length > 0 ? staffList[0].id : '');
+        setStaffId('');
         setLeaveTypeId('sick');
         const d = defaultDate || toDateString(new Date());
         setStartDate(d);
@@ -180,6 +180,9 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
               className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all cursor-pointer"
               required
             >
+              <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">
+                -- กรุณาเลือกบุคลากร (ไม่มี) --
+              </option>
               {staffList.map((staff) => (
                 <option key={staff.id} value={staff.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {staff.name} ({staff.department} • {staff.position})
@@ -278,7 +281,11 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
           </div>
 
           {/* Quota warning or status info */}
-          {isOverQuota ? (
+          {!staffId ? (
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>💡 กรุณาเลือกบุคลากรเพื่อตรวจสอบโควตาวันลาคงเหลือ</span>
+            </div>
+          ) : isOverQuota ? (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>

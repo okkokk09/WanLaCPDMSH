@@ -80,17 +80,16 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
             <User className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-            เลือกชื่อบุคลากรของคุณ
+            ยังไม่ได้เลือกบุคลากร
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-            กรุณาเลือกชื่อของคุณจากรายชื่อเพื่อเข้าดูข้อมูลวันลา โควตาวันลาสะสม
-            และประวัติการลาส่วนบุคคล (ระบบจะจดจำชื่อของท่านไว้สำหรับครั้งต่อไป)
+            เริ่มต้นระบบด้วยสถานะยังไม่ได้เลือกบุคลากร กรุณาเลือกชื่อของคุณหรือบุคลากรที่ต้องการตรวจสอบจากรายชื่อด้านล่างนี้
           </p>
 
           <div className="space-y-4">
             <div className="text-left">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                รายชื่อบุคลากร ({staffList.length} ท่าน)
+                เลือกบุคลากร ({staffList.length} ท่าน)
               </label>
               <select
                 value=""
@@ -98,7 +97,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               >
                 <option value="" disabled>
-                  -- แตะเพื่อเลือกชื่อของคุณ --
+                  -- แตะเพื่อเลือกบุคลากร (ไม่มี) --
                 </option>
                 {staffList.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -175,6 +174,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
               onChange={(e) => onSelectStaff(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
+              <option value="">-- ไม่เลือก / ล้างข้อมูล (ไม่มี) --</option>
               {staffList.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

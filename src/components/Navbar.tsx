@@ -270,8 +270,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer max-w-[170px] truncate"
                     title="เลือกชื่อของคุณเพื่อดูวันลาส่วนตัว"
                   >
-                    <option value="" disabled>
-                      👤 เลือกชื่อของท่าน
+                    <option value="">
+                      👤 ยังไม่เลือก (ไม่มี)
                     </option>
                     {staffList.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -375,8 +375,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium"
               >
-                <option value="" disabled>
-                  -- แตะเพื่อเลือกชื่อของคุณ --
+                <option value="">
+                  -- ยังไม่เลือกบุคลากร (ไม่มี) --
                 </option>
                 {staffList.map((s) => (
                   <option key={s.id} value={s.id}>
