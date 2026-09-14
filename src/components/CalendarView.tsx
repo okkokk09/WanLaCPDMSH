@@ -25,8 +25,9 @@ import {
 interface CalendarViewProps {
   staffList: Staff[];
   records: LeaveRecord[];
-  onOpenNewLeaveOnDate: (dateStr: string) => void;
-  onDeleteRecord: (recordId: string) => void;
+  onOpenNewLeaveOnDate?: (dateStr: string) => void;
+  onDeleteRecord?: (recordId: string) => void;
+  isAdmin?: boolean;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -34,6 +35,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   records,
   onOpenNewLeaveOnDate,
   onDeleteRecord,
+  isAdmin = true,
 }) => {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -272,7 +274,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       {cell.dayNumber}
                     </span>
 
-                    {cell.isCurrentMonth && (
+                    {isAdmin && cell.isCurrentMonth && onOpenNewLeaveOnDate && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -399,17 +401,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
                   ผู้ที่ลาในวันนี้ ({detailRecords.length} คน)
                 </span>
-                <button
-                  onClick={() => {
-                    const d = detailDate;
-                    setDetailDate(null);
-                    onOpenNewLeaveOnDate(d);
-                  }}
-                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>บันทึกการลาในวันนี้</span>
-                </button>
+                {isAdmin && onOpenNewLeaveOnDate && (
+                  <button
+                    onClick={() => {
+                      const d = detailDate;
+                      setDetailDate(null);
+                      onOpenNewLeaveOnDate(d);
+                    }}
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>บันทึกการลาในวันนี้</span>
+                  </button>
+                )}
               </div>
 
               {detailRecords.length === 0 ? (
@@ -453,19 +457,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         )}
                       </div>
 
-                      <div className="mt-2 text-right">
-                        <button
-                          onClick={() => {
-                            if (window.confirm('คุณต้องการลบรายการบันทึกการลานี้ใช่หรือไม่?')) {
-                              onDeleteRecord(record.id);
-                              setDetailDate(null);
-                            }
-                          }}
-                          className="text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-medium cursor-pointer"
-                        >
-                          ลบรายการนี้
-                        </button>
-                      </div>
+                      {isAdmin && onDeleteRecord && (
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={() => {
+                              if (window.confirm('คุณต้องการลบรายการบันทึกการลานี้ใช่หรือไม่?')) {
+                                onDeleteRecord(record.id);
+                                setDetailDate(null);
+                              }
+                            }}
+                            className="text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-medium cursor-pointer"
+                          >
+                            ลบรายการนี้
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

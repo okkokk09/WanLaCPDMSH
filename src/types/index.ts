@@ -1,5 +1,7 @@
 export type LeaveTypeId = 'sick' | 'business' | 'vacation' | 'maternity' | 'ordination' | 'other';
 
+export type UserRole = 'admin' | 'staff';
+
 export interface LeaveTypeConfig {
   id: LeaveTypeId;
   name: string;

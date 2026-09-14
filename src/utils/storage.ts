@@ -1,4 +1,4 @@
-import type { Staff, LeaveRecord, StaffLeaveSummary } from '../types';
+import type { Staff, LeaveRecord, StaffLeaveSummary, UserRole } from '../types';
 import { LEAVE_TYPES } from './constants';
 import * as XLSX from 'xlsx';
 import { toDateString } from './dateUtils';
@@ -637,4 +637,65 @@ export function exportRecordsToExcel(records: LeaveRecord[], staffList: Staff[])
   XLSX.utils.book_append_sheet(wb, ws, 'ประวัติการลา');
 
   XLSX.writeFile(wb, `ประวัติการลา_${toDateString(new Date())}.xlsx`);
+}
+
+// User Role & Admin Authentication Storage
+const ROLE_KEY = 'leave_system_user_role';
+const ADMIN_PASSWORD_KEY = 'leave_system_admin_password';
+const MY_STAFF_ID_KEY = 'leave_system_my_staff_id';
+
+export function getUserRole(): UserRole {
+  try {
+    const role = localStorage.getItem(ROLE_KEY);
+    if (role === 'admin' || role === 'staff') return role;
+    return 'staff'; // Default to staff role
+  } catch {
+    return 'staff';
+  }
+}
+
+export function setUserRole(role: UserRole): void {
+  try {
+    localStorage.setItem(ROLE_KEY, role);
+  } catch (err) {
+    console.error('Error saving user role:', err);
+  }
+}
+
+export function getAdminPassword(): string {
+  try {
+    return localStorage.getItem(ADMIN_PASSWORD_KEY) || 'admin';
+  } catch {
+    return 'admin';
+  }
+}
+
+export function setAdminPassword(password: string): void {
+  try {
+    localStorage.setItem(ADMIN_PASSWORD_KEY, password);
+  } catch (err) {
+    console.error('Error saving admin password:', err);
+  }
+}
+
+export function verifyAdminPassword(password: string): boolean {
+  const currentPassword = getAdminPassword();
+  // Allow configured password, default 'admin', or '1234'
+  return password === currentPassword || password === 'admin' || password === '1234';
+}
+
+export function getMyStaffId(): string | null {
+  try {
+    return localStorage.getItem(MY_STAFF_ID_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setMyStaffId(staffId: string): void {
+  try {
+    localStorage.setItem(MY_STAFF_ID_KEY, staffId);
+  } catch (err) {
+    console.error('Error saving my staff ID:', err);
+  }
 }
