@@ -5,7 +5,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
     id: 'sick',
     name: 'ลาป่วย',
     shortName: 'ป่วย',
-    defaultQuota: 0,
+    defaultQuota: 60,
     color: {
       bg: 'bg-red-50',
       text: 'text-red-700',
@@ -13,13 +13,13 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
       badge: 'bg-red-100 text-red-800 border-red-300',
       dot: 'bg-red-500',
     },
-    description: 'การลาเนื่องจากอาการเจ็บป่วยหรือต้องรักษาตัว',
+    description: 'การลาเนื่องจากอาการเจ็บป่วยหรือต้องรักษาตัว (ข้าราชการ 60 วัน / พนักงานราชการ 30 วัน)',
   },
   {
     id: 'business',
     name: 'ลากิจส่วนตัว',
     shortName: 'กิจ',
-    defaultQuota: 0,
+    defaultQuota: 45,
     color: {
       bg: 'bg-blue-50',
       text: 'text-blue-700',
@@ -27,13 +27,13 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
       badge: 'bg-blue-100 text-blue-800 border-blue-300',
       dot: 'bg-blue-500',
     },
-    description: 'การลาเพื่อไปทำธุระจำเป็นส่วนตัว',
+    description: 'การลาเพื่อไปทำธุระจำเป็นส่วนตัว (ข้าราชการ 45 วัน / พนักงานราชการ 15 วัน)',
   },
   {
     id: 'vacation',
     name: 'ลาพักผ่อน',
     shortName: 'พักผ่อน',
-    defaultQuota: 0,
+    defaultQuota: 10,
     color: {
       bg: 'bg-emerald-50',
       text: 'text-emerald-700',
@@ -41,13 +41,13 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
       badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       dot: 'bg-emerald-500',
     },
-    description: 'การลาหยุดพักผ่อนประจำปี',
+    description: 'การลาหยุดพักผ่อนประจำปี (10 วันทำการ + วันลาสะสมยกมา)',
   },
   {
     id: 'maternity',
     name: 'ลาคลอดบุตร',
     shortName: 'คลอด',
-    defaultQuota: 0,
+    defaultQuota: 90,
     color: {
       bg: 'bg-pink-50',
       text: 'text-pink-700',
@@ -55,7 +55,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
       badge: 'bg-pink-100 text-pink-800 border-pink-300',
       dot: 'bg-pink-500',
     },
-    description: 'การลาเพื่อคลอดบุตรและดูแลบุตรแรกเกิด',
+    description: 'การลาเพื่อคลอดบุตรและดูแลบุตรแรกเกิด (ไม่เกิน 90 วัน)',
   },
 ];
 

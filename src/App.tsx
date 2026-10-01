@@ -277,6 +277,7 @@ export const App: React.FC = () => {
             onOpenNewStaff={handleOpenNewStaff}
             onEditStaff={handleEditStaff}
             onDeleteStaff={handleDeleteStaff}
+            onUpdateStaffList={setStaffList}
           />
         )}
 

@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUp,
+  RotateCcw,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import {
@@ -17,7 +18,8 @@ import {
   WORK_GROUPS,
   getWorkGroupColor,
 } from '../utils/constants';
-import { calculateStaffSummaries } from '../utils/storage';
+import { calculateStaffSummaries, rolloverFiscalYear } from '../utils/storage';
+import { getCurrentFiscalYear } from '../utils/dateUtils';
 
 interface StaffManagementViewProps {
   staffList: Staff[];
@@ -25,6 +27,7 @@ interface StaffManagementViewProps {
   onOpenNewStaff: () => void;
   onEditStaff: (staff: Staff) => void;
   onDeleteStaff: (staffId: string) => void;
+  onUpdateStaffList?: (staffList: Staff[]) => void;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -33,6 +36,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onOpenNewStaff,
   onEditStaff,
   onDeleteStaff,
+  onUpdateStaffList,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
@@ -127,24 +131,59 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     setOpenDept(null);
   };
 
+  const currentFiscalYear = getCurrentFiscalYear();
+
+  const handleRolloverFiscalYear = () => {
+    const prevFY = currentFiscalYear - 1;
+    const msg =
+      `ยืนยันปรับยอดโควตาวันลาทุกคนรับปีงบประมาณใหม่ ${currentFiscalYear} ตามระเบียบราชการ?\n\n` +
+      `• ข้าราชการ/ลูกจ้างประจำ: ลาป่วย 60 วัน, ลากิจ 45 วัน, ลาพักผ่อน 10 วัน, ลาคลอด 90 วัน\n` +
+      `• พนักงานราชการ/จ้างเหมา: ลาป่วย 30 วัน, ลากิจ 15 วัน, ลาพักผ่อน 10 วัน, ลาคลอด 90 วัน\n` +
+      `• คำนวณวันลาพักผ่อนสะสมคงเหลือจากปีงบประมาณ ${prevFY} เป็นวันลาสะสมยกมาให้อัตโนมัติ (สูงสุดไม่เกิน 20 วัน)\n\n` +
+      `ต้องการดำเนินการต่อหรือไม่?`;
+
+    if (window.confirm(msg)) {
+      const updated = rolloverFiscalYear(staffList, records, prevFY, currentFiscalYear);
+      if (onUpdateStaffList) {
+        onUpdateStaffList(updated);
+      }
+      alert(`ปรับยอดโควตาวันลารับปีงบประมาณ ${currentFiscalYear} เรียบร้อยแล้ว (${updated.length} ท่าน)`);
+    }
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              ปีงบประมาณ {currentFiscalYear}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             แบ่งกลุ่มงานตามโครงสร้างสำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน พร้อมแสดงผลแบบแถวแนวนอน
           </p>
         </div>
 
-        <button
-          onClick={onOpenNewStaff}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>เพิ่มบุคลากรใหม่</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleRolloverFiscalYear}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+            title="ปรับยอดโควตารับปีงบประมาณใหม่ตามระเบียบราชการ และยกยอดวันลาสะสม"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>ปรับยอดโควตารับปีงบประมาณ {currentFiscalYear} ตามระเบียบ</span>
+          </button>
+          <button
+            onClick={onOpenNewStaff}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>เพิ่มบุคลากรใหม่</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter, Search & Group Controls Bar */}

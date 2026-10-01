@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Shield, Sparkles } from 'lucide-react';
 import type { Staff } from '../types';
 import { LEAVE_TYPES, DEPARTMENTS } from '../utils/constants';
-import { getDefaultQuotas } from '../utils/storage';
+import { getOfficialQuotasForPosition } from '../utils/storage';
 
 interface StaffModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
-  const [quotas, setQuotas] = useState<Record<string, number>>(getDefaultQuotas());
+  const [quotas, setQuotas] = useState<Record<string, number>>(getOfficialQuotasForPosition(''));
   const [carriedOverVacationDays, setCarriedOverVacationDays] = useState<number>(0);
   const [notes, setNotes] = useState('');
 
@@ -33,7 +33,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         setPosition(initialStaff.position);
         setDepartment(initialStaff.department);
         const integerQuotas: Record<string, number> = {};
-        Object.entries({ ...getDefaultQuotas(), ...initialStaff.quotas }).forEach(([k, v]) => {
+        Object.entries({ ...getOfficialQuotasForPosition(initialStaff.position), ...initialStaff.quotas }).forEach(([k, v]) => {
           integerQuotas[k] = Math.max(0, Math.floor(v));
         });
         setQuotas(integerQuotas);
@@ -43,7 +43,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         setName('');
         setPosition('');
         setDepartment(DEPARTMENTS[0]);
-        setQuotas(getDefaultQuotas());
+        setQuotas(getOfficialQuotasForPosition(''));
         setCarriedOverVacationDays(0);
         setNotes('');
       }
@@ -175,19 +175,38 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
           {/* Leave Quotas Configuration */}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-indigo-500" />
                 <span>กำหนดโควตาวันลาประจำปี (วัน/ปี)</span>
               </h3>
-              <button
-                type="button"
-                onClick={() => setQuotas(getDefaultQuotas())}
-                className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-3 h-3" />
-                รีเซ็ตเป็น 0 วัน
-              </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setQuotas(getOfficialQuotasForPosition('นักวิชาการสหกรณ์ชำนาญการ'))}
+                  className="text-[11px] px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer"
+                  title="กำหนดตามระเบียบข้าราชการ/ลูกจ้างประจำ: ป่วย 60, กิจ 45, พักผ่อน 10, คลอด 90"
+                >
+                  🏛️ สิทธิ์ข้าราชการ (60/45/10)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuotas(getOfficialQuotasForPosition('พนักงานราชการ'))}
+                  className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                  title="กำหนดตามระเบียบพนักงานราชการ/จ้างเหมา: ป่วย 30, กิจ 15, พักผ่อน 10, คลอด 90"
+                >
+                  🏢 สิทธิ์พนักงานราชการ (30/15/10)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuotas(getOfficialQuotasForPosition(position))}
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center gap-0.5 cursor-pointer ml-1"
+                  title="วิเคราะห์และปรับค่าตามชื่อตำแหน่งปัจจุบันอัตโนมัติ"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  ตามตำแหน่ง
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">

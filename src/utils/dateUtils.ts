@@ -164,3 +164,33 @@ export function isDateInLeaveRange(targetDate: string, record: { startDate: stri
   }
   return true;
 }
+
+// Get Buddhist Era Fiscal Year for a given YYYY-MM-DD date
+// Thai fiscal year runs from 1 October to 30 September.
+// If month >= 10, fiscal year = CE Year + 544 (e.g. 2026-10-01 -> 2570)
+// If month < 10, fiscal year = CE Year + 543 (e.g. 2026-09-30 -> 2569)
+export function getFiscalYear(dateStr: string): number {
+  if (!dateStr) return getCurrentFiscalYear();
+  const parts = dateStr.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  return month >= 10 ? year + 544 : year + 543;
+}
+
+// Get the current fiscal year in Buddhist Era
+export function getCurrentFiscalYear(): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  return month >= 10 ? year + 544 : year + 543;
+}
+
+// Get date range string for a fiscal year (e.g. FY 2570 is 2026-10-01 to 2027-09-30)
+export function getFiscalYearDateRange(fiscalYear: number): { startDate: string; endDate: string } {
+  const ceEndYear = fiscalYear - 543;
+  const ceStartYear = ceEndYear - 1;
+  return {
+    startDate: `${ceStartYear}-10-01`,
+    endDate: `${ceEndYear}-09-30`,
+  };
+}

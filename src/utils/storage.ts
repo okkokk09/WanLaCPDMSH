@@ -1,7 +1,7 @@
 import type { Staff, LeaveRecord, StaffLeaveSummary, UserRole } from '../types';
 import { LEAVE_TYPES } from './constants';
 import * as XLSX from 'xlsx';
-import { toDateString } from './dateUtils';
+import { toDateString, getFiscalYear, getCurrentFiscalYear } from './dateUtils';
 import { sendRecordsToStreamlit } from './streamlitBridge';
 
 const STORAGE_KEYS = {
@@ -9,11 +9,55 @@ const STORAGE_KEYS = {
   RECORDS: 'leave_system_records_v5',
 };
 
-// Initial default quotas generator (All 0 by default)
-export function getDefaultQuotas(): Record<string, number> {
+// Helper: Check if staff is civil servant or permanent employee
+export function isCivilServant(position: string): boolean {
+  if (!position) return false;
+  const p = position.toLowerCase();
+  return (
+    p.includes('ชำนาญการ') ||
+    p.includes('ปฏิบัติการ') ||
+    p.includes('ปฏิบัติงาน') ||
+    p.includes('อาวุโส') ||
+    p.includes('สหกรณ์จังหวัด') ||
+    p.includes('ผู้อำนวยการ') ||
+    p.includes('ส 2') ||
+    p.includes('ลูกจ้างประจำ')
+  );
+}
+
+// Generate official leave quotas per government regulations
+export function getOfficialQuotasForPosition(position: string): Record<string, number> {
   const quotas: Record<string, number> = {};
   LEAVE_TYPES.forEach((t) => {
     quotas[t.id] = 0;
+  });
+
+  const isCivil = isCivilServant(position);
+  if (isCivil) {
+    // ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555
+    quotas['sick'] = 60; // ลาป่วย 60 วันทำการ
+    quotas['business'] = 45; // ลากิจส่วนตัว 45 วันทำการ
+    quotas['vacation'] = 10; // ลาพักผ่อน 10 วันทำการ
+    quotas['maternity'] = 90; // ลาคลอดบุตร 90 วัน
+  } else {
+    // ประกาศ คพร. สิทธิประโยชน์ของพนักงานราชการ และเทียบเคียงพนักงานจ้างเหมา
+    quotas['sick'] = 30; // ลาป่วย 30 วันทำการ
+    quotas['business'] = 15; // ลากิจส่วนตัว 15 วันทำการ
+    quotas['vacation'] = 10; // ลาพักผ่อน 10 วันทำการ
+    quotas['maternity'] = 90; // ลาคลอดบุตร 90 วัน
+  }
+
+  return quotas;
+}
+
+// Initial default quotas generator
+export function getDefaultQuotas(position?: string): Record<string, number> {
+  if (position) {
+    return getOfficialQuotasForPosition(position);
+  }
+  const quotas: Record<string, number> = {};
+  LEAVE_TYPES.forEach((t) => {
+    quotas[t.id] = t.defaultQuota || 0;
   });
   return quotas;
 }
@@ -352,7 +396,10 @@ export const INITIAL_STAFF: Staff[] = [
     department: 'กลุ่มส่งเสริมสหกรณ์ 4',
     quotas: getDefaultQuotas(),
   },
-];
+].map((s) => ({
+  ...s,
+  quotas: getOfficialQuotasForPosition(s.position),
+}));
 
 export const INITIAL_RECORDS: LeaveRecord[] = [
   {
@@ -391,11 +438,23 @@ export function getStaffList(): Staff[] {
       return INITIAL_STAFF;
     }
     const staffList: Staff[] = JSON.parse(data);
-    return staffList.map((s) => {
+    let upgradedAny = false;
+    const mappedList = staffList.map((s) => {
       const integerQuotas: Record<string, number> = {};
+      let totalQuota = 0;
       Object.entries(s.quotas || {}).forEach(([k, v]) => {
-        integerQuotas[k] = Math.max(0, Math.floor(v));
+        const val = Math.max(0, Math.floor(v));
+        integerQuotas[k] = val;
+        totalQuota += val;
       });
+
+      // If staff has no quotas or total quota is 0 (legacy data before fiscal year update), upgrade to official regulations
+      let finalQuotas = integerQuotas;
+      if (totalQuota === 0) {
+        finalQuotas = getOfficialQuotasForPosition(s.position);
+        upgradedAny = true;
+      }
+
       const department =
         s.id === 'staff-1' || s.position.includes('สหกรณ์จังหวัดแม่ฮ่องสอน')
           ? 'สหกรณ์จังหวัด'
@@ -403,10 +462,15 @@ export function getStaffList(): Staff[] {
       return {
         ...s,
         department,
-        quotas: integerQuotas,
+        quotas: finalQuotas,
         carriedOverVacationDays: s.carriedOverVacationDays || 0,
       };
     });
+
+    if (upgradedAny) {
+      saveStaffList(mappedList);
+    }
+    return mappedList;
   } catch (err) {
     console.error('Error reading staff from localStorage:', err);
     return INITIAL_STAFF;
@@ -479,13 +543,22 @@ export function resetAllData(): void {
   localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(INITIAL_RECORDS));
 }
 
-// Calculate summary per staff member
-export function calculateStaffSummaries(staffList: Staff[], records: LeaveRecord[]): StaffLeaveSummary[] {
+// Calculate summary per staff member (supports filtering by fiscal year, default current fiscal year 2570)
+export function calculateStaffSummaries(
+  staffList: Staff[],
+  records: LeaveRecord[],
+  fiscalYear: number | 'all' = getCurrentFiscalYear()
+): StaffLeaveSummary[] {
   return staffList.map((staff) => {
-    const staffRecords = records.filter((r) => r.staffId === staff.id && r.status !== 'rejected');
+    const staffRecords = records.filter((r) => {
+      if (r.staffId !== staff.id || r.status === 'rejected') return false;
+      if (fiscalYear === 'all') return true;
+      return getFiscalYear(r.startDate) === fiscalYear;
+    });
+
     const usedByType: Record<string, number> = {};
     const remainingByType: Record<string, number> = {};
-    const quotas: Record<string, number> = { ...getDefaultQuotas(), ...staff.quotas };
+    const quotas: Record<string, number> = { ...getDefaultQuotas(staff.position), ...staff.quotas };
 
     // Add carried-over vacation days to vacation quota if present
     const carriedOverVacationDays = staff.carriedOverVacationDays || 0;
@@ -527,6 +600,41 @@ export function calculateStaffSummaries(staffList: Staff[], records: LeaveRecord
       carriedOverVacationDays,
     };
   });
+}
+
+// Rollover / upgrade all staff quotas for a new fiscal year according to regulations
+export function rolloverFiscalYear(
+  staffList: Staff[],
+  records: LeaveRecord[],
+  fromYear: number = getCurrentFiscalYear() - 1,
+  _toYear: number = getCurrentFiscalYear()
+): Staff[] {
+  // Calculate vacation usage from previous fiscal year
+  const prevYearSummaries = calculateStaffSummaries(staffList, records, fromYear);
+  const prevSummaryMap = new Map(prevYearSummaries.map((s) => [s.staff.id, s]));
+
+  const updatedStaffList: Staff[] = staffList.map((staff) => {
+    const prevSummary = prevSummaryMap.get(staff.id);
+    // Unused vacation days from previous year (default 10 days if no record)
+    let unusedVacation = 10;
+    if (prevSummary) {
+      unusedVacation = prevSummary.remainingByType['vacation'] ?? 10;
+    }
+    // Cap carried-over vacation days at 20 days max per regulations
+    const carriedOver = Math.min(20, Math.max(0, unusedVacation));
+
+    // Fresh official quotas for new fiscal year
+    const officialQuotas = getOfficialQuotasForPosition(staff.position);
+
+    return {
+      ...staff,
+      quotas: officialQuotas,
+      carriedOverVacationDays: carriedOver,
+    };
+  });
+
+  saveStaffList(updatedStaffList);
+  return updatedStaffList;
 }
 
 // Export all data to JSON

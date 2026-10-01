@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPE_MAP } from '../utils/constants';
-import { toDateString, formatThaiDateShort, isDateInLeaveRange } from '../utils/dateUtils';
+import { toDateString, formatThaiDateShort, isDateInLeaveRange, getCurrentFiscalYear } from '../utils/dateUtils';
 import { exportSummaryToExcel, exportSummaryToCsv, calculateStaffSummaries } from '../utils/storage';
 
 interface DashboardViewProps {
@@ -36,6 +36,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const todayStr = useMemo(() => toDateString(new Date()), []);
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
+  const currentFiscalYear = getCurrentFiscalYear();
 
   // People on leave today
   const leavesToday = useMemo(() => {
@@ -72,8 +73,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Staff leave summaries for quick export
   const staffSummaries = useMemo(() => {
-    return calculateStaffSummaries(staffList, records);
-  }, [staffList, records]);
+    return calculateStaffSummaries(staffList, records, currentFiscalYear);
+  }, [staffList, records, currentFiscalYear]);
 
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
@@ -82,9 +83,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Top Welcome & Quick Actions Bar */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-medium text-indigo-200 mb-2 backdrop-blur-xs">
-            📅 ยินดีต้อนรับสู่ระบบบันทึกวันลา
-          </span>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-medium text-indigo-200 backdrop-blur-xs">
+              📅 ยินดีต้อนรับสู่ระบบบันทึกวันลา
+            </span>
+            <span className="inline-block px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold text-emerald-300 backdrop-blur-xs">
+              ปีงบประมาณ {currentFiscalYear}
+            </span>
+          </div>
           <h2 className="text-2xl font-bold tracking-tight">ภาพรวมข้อมูลการลาบุคลากร</h2>
           <p className="text-sm text-indigo-200 mt-1">
             วันนี้ {formatThaiDateShort(todayStr)} • บริหารจัดการวันลาบุคลากรได้ครบจบในที่เดียว

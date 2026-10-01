@@ -11,6 +11,7 @@ import {
 import type { Staff, LeaveRecord } from '../types';
 import { WORK_GROUPS } from '../utils/constants';
 import { calculateStaffSummaries, exportSummaryToExcel, exportSummaryToCsv } from '../utils/storage';
+import { getFiscalYear, getCurrentFiscalYear } from '../utils/dateUtils';
 
 interface LeaveBalanceViewProps {
   staffList: Staff[];
@@ -21,13 +22,26 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   staffList,
   records,
 }) => {
+  const currentFY = getCurrentFiscalYear();
+  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | 'all'>(currentFY);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
 
-  // Calculate summaries for all staff
+  // Available fiscal years
+  const fiscalYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(currentFY);
+    years.add(currentFY - 1);
+    records.forEach((r) => {
+      years.add(getFiscalYear(r.startDate));
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [records, currentFY]);
+
+  // Calculate summaries for all staff based on selected fiscal year
   const summaries = useMemo(() => {
-    return calculateStaffSummaries(staffList, records);
-  }, [staffList, records]);
+    return calculateStaffSummaries(staffList, records, selectedFiscalYear);
+  }, [staffList, records, selectedFiscalYear]);
 
   // Unique departments for filter
   const departments = useMemo(() => {
@@ -70,7 +84,12 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 no-print">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">สรุปยอดวันลาคงเหลือและสถิติ</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">สรุปยอดวันลาคงเหลือและสถิติ</h2>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              {selectedFiscalYear === 'all' ? 'ทุกปีงบประมาณ' : `ปีงบประมาณ ${selectedFiscalYear}`}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             รายงานตรวจสอบสิทธิ์วันลา โควตารวม วันที่ใช้ไป และวันลาคงเหลือของบุคลากรทุกคน
           </p>
@@ -148,17 +167,38 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
-        <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-1 items-center gap-3 w-full sm:w-auto flex-wrap">
           {/* Search box */}
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาชื่อ, รหัสพนักงาน..."
+              placeholder="ค้นหาชื่อ, ตำแหน่ง, รหัส..."
               className="w-full pl-9 pr-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
+          </div>
+
+          {/* Fiscal Year filter */}
+          <div className="w-48">
+            <select
+              value={selectedFiscalYear}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedFiscalYear(val === 'all' ? 'all' : parseInt(val, 10));
+              }}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              {fiscalYears.map((fy) => (
+                <option key={fy} value={fy} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                  ปีงบประมาณ {fy} {fy === currentFY ? '(ปัจจุบัน)' : ''}
+                </option>
+              ))}
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                ทุกปีงบประมาณ
+              </option>
+            </select>
           </div>
 
           {/* Department filter */}
@@ -211,15 +251,15 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredSummaries.map((s) => {
-                const sickQuota = s.quotas['sick'] || 30;
+                const sickQuota = s.quotas['sick'] ?? 60;
                 const sickUsed = s.usedByType['sick'] || 0;
                 const sickRemain = s.remainingByType['sick'] ?? sickQuota;
 
-                const bizQuota = s.quotas['business'] || 6;
+                const bizQuota = s.quotas['business'] ?? 45;
                 const bizUsed = s.usedByType['business'] || 0;
                 const bizRemain = s.remainingByType['business'] ?? bizQuota;
 
-                const vacQuota = s.quotas['vacation'] || 10;
+                const vacQuota = s.quotas['vacation'] ?? 10;
                 const vacUsed = s.usedByType['vacation'] || 0;
                 const vacRemain = s.remainingByType['vacation'] ?? vacQuota;
 

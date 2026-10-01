@@ -15,7 +15,7 @@ import {
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP } from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
-import { formatThaiDateFull } from '../utils/dateUtils';
+import { formatThaiDateFull, getCurrentFiscalYear } from '../utils/dateUtils';
 
 interface MyLeaveViewProps {
   staffList: Staff[];
@@ -32,6 +32,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
 }) => {
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
   const [filterLeaveType, setFilterLeaveType] = useState<string>('all');
+  const currentFiscalYear = getCurrentFiscalYear();
 
   // Find the selected staff member
   const currentStaff = useMemo(() => {
@@ -42,9 +43,9 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   // Calculate summaries for this staff member
   const staffSummary = useMemo(() => {
     if (!currentStaff) return null;
-    const summaries = calculateStaffSummaries([currentStaff], records);
+    const summaries = calculateStaffSummaries([currentStaff], records, currentFiscalYear);
     return summaries[0] || null;
-  }, [currentStaff, records]);
+  }, [currentStaff, records, currentFiscalYear]);
 
   // Filter leave records for current staff
   const myRecords = useMemo(() => {
@@ -120,15 +121,15 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   }
 
   // Quota metrics for selected staff
-  const sickQuota = staffSummary?.quotas['sick'] || 30;
+  const sickQuota = staffSummary?.quotas['sick'] ?? 60;
   const sickUsed = staffSummary?.usedByType['sick'] || 0;
   const sickRemain = staffSummary?.remainingByType['sick'] ?? sickQuota;
 
-  const bizQuota = staffSummary?.quotas['business'] || 6;
+  const bizQuota = staffSummary?.quotas['business'] ?? 45;
   const bizUsed = staffSummary?.usedByType['business'] || 0;
   const bizRemain = staffSummary?.remainingByType['business'] ?? bizQuota;
 
-  const vacQuota = staffSummary?.quotas['vacation'] || 10;
+  const vacQuota = staffSummary?.quotas['vacation'] ?? 10;
   const vacUsed = staffSummary?.usedByType['vacation'] || 0;
   const vacRemain = staffSummary?.remainingByType['vacation'] ?? vacQuota;
   const carriedOver = currentStaff.carriedOverVacationDays || 0;
@@ -151,7 +152,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
                 {currentStaff.name}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                บุคลากรทั่วไป
+                ปีงบประมาณ {currentFiscalYear}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
