@@ -3,7 +3,6 @@ import {
   User,
   Calendar,
   Clock,
-  ShieldCheck,
   ShieldAlert,
   Search,
   CheckCircle2,
@@ -134,10 +133,6 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   const vacRemain = staffSummary?.remainingByType['vacation'] ?? vacQuota;
   const carriedOver = currentStaff.carriedOverVacationDays || 0;
 
-  const totalUsed = staffSummary?.totalUsed || 0;
-  const totalRemaining = staffSummary?.totalRemaining || 0;
-  const totalQuota = staffSummary?.totalQuota || 0;
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Profile Header Card */}
@@ -187,7 +182,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
       </div>
 
       {/* Quotas & Balances Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Vacation Leave Card */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
@@ -256,28 +251,6 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>ใช้ไปแล้ว: <b className="text-slate-800 dark:text-slate-200">{bizUsed}</b> วัน</span>
             <span>โควตา: <b className="text-slate-800 dark:text-slate-200">{bizQuota}</b> วัน</span>
-          </div>
-        </div>
-
-        {/* Total Summary Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-              ภาพรวมทุกประเภท
-            </span>
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-              {totalRemaining}
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">วันคงเหลือรวม</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>ใช้วันลาแล้ว: <b className="text-slate-800 dark:text-slate-200">{totalUsed}</b> วัน</span>
-            <span>จากโควตารวม: <b className="text-slate-800 dark:text-slate-200">{totalQuota}</b> วัน</span>
           </div>
         </div>
       </div>
