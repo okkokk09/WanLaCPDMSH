@@ -11,6 +11,9 @@ import {
   ChevronUp,
   ChevronsUp,
   RotateCcw,
+  Undo2,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import {
@@ -18,7 +21,11 @@ import {
   WORK_GROUPS,
   getWorkGroupColor,
 } from '../utils/constants';
-import { calculateStaffSummaries, rolloverFiscalYear } from '../utils/storage';
+import {
+  calculateStaffSummaries,
+  rolloverFiscalYear,
+  resetCarriedOverVacationDays,
+} from '../utils/storage';
 import { getCurrentFiscalYear } from '../utils/dateUtils';
 
 interface StaffManagementViewProps {
@@ -40,6 +47,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
   // Single-open accordion: only one work group is open at any time
   const [openDept, setOpenDept] = useState<string | null>(null);
 
@@ -133,21 +141,28 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   const currentFiscalYear = getCurrentFiscalYear();
 
-  const handleRolloverFiscalYear = () => {
+  const handleApplyCorrectRollover = () => {
     const prevFY = currentFiscalYear - 1;
-    const msg =
-      `ยืนยันปรับยอดโควตาวันลาทุกคนรับปีงบประมาณใหม่ ${currentFiscalYear} ตามระเบียบราชการ?\n\n` +
-      `• ข้าราชการ/ลูกจ้างประจำ: ลาป่วย 60 วัน, ลากิจ 45 วัน, ลาพักผ่อน 10 วัน, ลาคลอด 90 วัน\n` +
-      `• พนักงานราชการ/จ้างเหมา: ลาป่วย 30 วัน, ลากิจ 15 วัน, ลาพักผ่อน 10 วัน, ลาคลอด 90 วัน\n` +
-      `• คำนวณวันลาพักผ่อนสะสมคงเหลือจากปีงบประมาณ ${prevFY} เป็นวันลาสะสมยกมาให้อัตโนมัติ (สูงสุดไม่เกิน 20 วัน)\n\n` +
-      `ต้องการดำเนินการต่อหรือไม่?`;
+    const updated = rolloverFiscalYear(staffList, records, prevFY, currentFiscalYear);
+    if (onUpdateStaffList) {
+      onUpdateStaffList(updated);
+    }
+    setIsRolloverModalOpen(false);
+    alert(`ปรับยอดโควตาและแก้ไขวันลาสะสมยกมาตามสิทธิ์จริงเรียบร้อยแล้ว (${updated.length} ท่าน)`);
+  };
 
-    if (window.confirm(msg)) {
-      const updated = rolloverFiscalYear(staffList, records, prevFY, currentFiscalYear);
+  const handleResetCarriedOver = () => {
+    if (
+      window.confirm(
+        `ยืนยันย้อนกลับ: ล้างวันลาสะสมยกมาของทุกคนเป็น 0 วัน ใช่หรือไม่?\n\n(ทุกคนจะเหลือเฉพาะสิทธิ์ลาพักผ่อนประจำปีนี้ 10 วันถ้วนเท่ากัน)`
+      )
+    ) {
+      const updated = resetCarriedOverVacationDays(staffList);
       if (onUpdateStaffList) {
         onUpdateStaffList(updated);
       }
-      alert(`ปรับยอดโควตาวันลารับปีงบประมาณ ${currentFiscalYear} เรียบร้อยแล้ว (${updated.length} ท่าน)`);
+      setIsRolloverModalOpen(false);
+      alert(`ล้างวันลาสะสมยกมาเป็น 0 วัน เรียบร้อยแล้ว (${updated.length} ท่าน)`);
     }
   };
 
@@ -169,12 +184,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={handleRolloverFiscalYear}
+            onClick={() => setIsRolloverModalOpen(true)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-            title="ปรับยอดโควตารับปีงบประมาณใหม่ตามระเบียบราชการ และยกยอดวันลาสะสม"
+            title="ปรับยอดโควตารับปีงบประมาณใหม่ หรือย้อนกลับแก้ไขวันลาสะสมยกมา"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>ปรับยอดโควตารับปีงบประมาณ {currentFiscalYear} ตามระเบียบ</span>
+            <span>จัดการโควตาปีงบประมาณ {currentFiscalYear}</span>
           </button>
           <button
             onClick={onOpenNewStaff}
@@ -416,6 +431,115 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal: Fiscal Year Rollover / Revert */}
+      {isRolloverModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsRolloverModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16"
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-900 to-indigo-900 px-6 py-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white/15 rounded-xl">
+                  <RotateCcw className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold">
+                    จัดการโควตาวันลารับปีงบประมาณ {currentFiscalYear}
+                  </h3>
+                  <p className="text-xs text-indigo-200 mt-0.5">
+                    ปรับยอดโควตา หรือแก้ไข/ย้อนกลับวันลาสะสมยกมา
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRolloverModalOpen(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Option 1: Fix / Recalculate true rollover */}
+              <div className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/50 dark:bg-emerald-950/30 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 mt-0.5">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>คำนวณวันลาสะสมยกมาตามจริง (แก้ไขกรณีกดซ้ำ)</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-semibold">
+                        แนะนำ
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      คำนวณวันลาสะสมยกมาจากปี 2569 ตามสิทธิ์จริง (10 วัน ลบวันลาที่ใช้ไปปีก่อน) สูงสุดไม่เกิน 10 วัน <b>ป้องกันการกดซ้ำ ยอดจะไม่เบิ้ล 2 เท่า</b>
+                    </p>
+                    <button
+                      onClick={handleApplyCorrectRollover}
+                      className="mt-3 w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>คำนวณและปรับยอดตามสิทธิ์จริง</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 2: Revert / Reset carryover to 0 */}
+              <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/50 dark:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-600 transition-all">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-amber-600 text-white shrink-0 mt-0.5">
+                    <Undo2 className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      ย้อนกลับ: ล้างวันลาสะสมยกมาเป็น 0 วัน (ไม่ยกยอด)
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      รีเซ็ตวันลาสะสมยกมาของทุกคนเป็น 0 วันทันที เพื่อเริ่มต้นปีใหม่โดยไม่นำวันลาปีก่อนมาคิด ทุกคนจะมีเฉพาะสิทธิ์ลาพักผ่อนประจำปีนี้ 10 วันเต็ม
+                    </p>
+                    <button
+                      onClick={handleResetCarriedOver}
+                      className="mt-3 w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                      <span>ย้อนกลับ / ล้างวันลาสะสมเป็น 0 วัน</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary of official regulation quotas */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
+                <div className="font-semibold text-slate-800 dark:text-slate-200">
+                  📋 สรุปเกณฑ์โควตาวันลาปีงบประมาณ {currentFiscalYear}:
+                </div>
+                <div>• ข้าราชการ/ลูกจ้างประจำ: ป่วย 60 วัน, กิจ 45 วัน, พักผ่อน 10 วัน, คลอด 90 วัน</div>
+                <div>• พนักงานราชการ/จ้างเหมา: ป่วย 30 วัน, กิจ 15 วัน, พักผ่อน 10 วัน, คลอด 90 วัน</div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsRolloverModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

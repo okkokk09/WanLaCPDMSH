@@ -459,11 +459,17 @@ export function getStaffList(): Staff[] {
         s.id === 'staff-1' || s.position.includes('สหกรณ์จังหวัดแม่ฮ่องสอน')
           ? 'สหกรณ์จังหวัด'
           : s.department;
+      // If carriedOverVacationDays was inflated beyond 10 days by multiple clicks, auto-correct to max 10
+      const safeCarriedOver = Math.min(10, Math.max(0, s.carriedOverVacationDays || 0));
+      if (safeCarriedOver !== (s.carriedOverVacationDays || 0)) {
+        upgradedAny = true;
+      }
+
       return {
         ...s,
         department,
         quotas: finalQuotas,
-        carriedOverVacationDays: s.carriedOverVacationDays || 0,
+        carriedOverVacationDays: safeCarriedOver,
       };
     });
 
@@ -609,19 +615,22 @@ export function rolloverFiscalYear(
   fromYear: number = getCurrentFiscalYear() - 1,
   _toYear: number = getCurrentFiscalYear()
 ): Staff[] {
-  // Calculate vacation usage from previous fiscal year
-  const prevYearSummaries = calculateStaffSummaries(staffList, records, fromYear);
-  const prevSummaryMap = new Map(prevYearSummaries.map((s) => [s.staff.id, s]));
-
   const updatedStaffList: Staff[] = staffList.map((staff) => {
-    const prevSummary = prevSummaryMap.get(staff.id);
-    // Unused vacation days from previous year (default 10 days if no record)
-    let unusedVacation = 10;
-    if (prevSummary) {
-      unusedVacation = prevSummary.remainingByType['vacation'] ?? 10;
-    }
-    // Cap carried-over vacation days at 20 days max per regulations
-    const carriedOver = Math.min(20, Math.max(0, unusedVacation));
+    // Calculate actual vacation days used in the previous fiscal year from leave records
+    const usedVacationInFromYear = records
+      .filter(
+        (r) =>
+          r.staffId === staff.id &&
+          r.status !== 'rejected' &&
+          r.leaveTypeId === 'vacation' &&
+          getFiscalYear(r.startDate) === fromYear
+      )
+      .reduce((sum, r) => sum + r.daysCount, 0);
+
+    // Standard annual vacation quota for previous year was 10 days
+    // Carried over days can NEVER exceed remaining days from standard 10 days (max 10 days)
+    // This is strictly idempotent: clicking multiple times will NOT inflate or compound the days
+    const carriedOver = Math.max(0, 10 - usedVacationInFromYear);
 
     // Fresh official quotas for new fiscal year
     const officialQuotas = getOfficialQuotasForPosition(staff.position);
@@ -632,6 +641,18 @@ export function rolloverFiscalYear(
       carriedOverVacationDays: carriedOver,
     };
   });
+
+  saveStaffList(updatedStaffList);
+  return updatedStaffList;
+}
+
+// Reset carried-over vacation days to 0 for all staff (revert carryover completely)
+export function resetCarriedOverVacationDays(staffList: Staff[]): Staff[] {
+  const updatedStaffList: Staff[] = staffList.map((staff) => ({
+    ...staff,
+    carriedOverVacationDays: 0,
+    quotas: getOfficialQuotasForPosition(staff.position),
+  }));
 
   saveStaffList(updatedStaffList);
   return updatedStaffList;
