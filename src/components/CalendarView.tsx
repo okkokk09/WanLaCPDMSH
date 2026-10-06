@@ -312,8 +312,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
                         cell.isToday
                           ? 'bg-indigo-600 text-white shadow-xs'
-                          : cell.holiday && cell.isCurrentMonth
-                          ? 'bg-rose-500 text-white shadow-xs'
                           : cell.isWeekend && cell.isCurrentMonth
                           ? 'text-rose-500'
                           : cell.isCurrentMonth
