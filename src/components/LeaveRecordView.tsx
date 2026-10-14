@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP, WORK_GROUPS } from '../utils/constants';
-import { formatThaiDateShort } from '../utils/dateUtils';
+import { formatThaiDateShort, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
 import { exportRecordsToExcel } from '../utils/storage';
 
 interface LeaveRecordViewProps {
@@ -18,6 +18,9 @@ interface LeaveRecordViewProps {
   records: LeaveRecord[];
   onOpenNewLeave: () => void;
   onDeleteRecord: (recordId: string) => void;
+  selectedFiscalYear?: number | 'all';
+  availableFiscalYears?: number[];
+  onSelectFiscalYear?: (fy: number | 'all') => void;
 }
 
 export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
@@ -25,11 +28,28 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   records,
   onOpenNewLeave,
   onDeleteRecord,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
+  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>('all');
+
+  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  const availableFiscalYearsList = useMemo(() => {
+    return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
+  }, [availableFiscalYearsProp, records]);
+
+  const handleFiscalYearChange = (fy: number | 'all') => {
+    if (onSelectFiscalYearProp) {
+      onSelectFiscalYearProp(fy);
+    } else {
+      setLocalFiscalYear(fy);
+    }
+  };
 
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
 
@@ -46,6 +66,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         const staffName = staff?.name?.toLowerCase() || '';
         const reason = r.reason?.toLowerCase() || '';
         const query = searchQuery.toLowerCase().trim();
+
+        // Fiscal year filter
+        if (activeFiscalYear !== 'all' && getFiscalYear(r.startDate) !== activeFiscalYear) {
+          return false;
+        }
 
         // Search query
         if (query && !staffName.includes(query) && !reason.includes(query)) {
@@ -70,7 +95,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         return true;
       })
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [records, staffMap, searchQuery, selectedType, selectedDept, selectedStaffId]);
+  }, [records, staffMap, searchQuery, selectedType, selectedDept, selectedStaffId, activeFiscalYear]);
 
   const totalFilteredDays = useMemo(() => {
     return filteredRecords.reduce((sum, r) => sum + r.daysCount, 0);
@@ -89,11 +114,12 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => exportRecordsToExcel(records, staffList)}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
+            onClick={() => exportRecordsToExcel(filteredRecords, staffList)}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+            title="ส่งออกรายการตามที่กรองไว้เป็นไฟล์ Excel"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>ส่งออก Excel</span>
+            <span>ส่งออก Excel {activeFiscalYear !== 'all' ? `(ปีงบฯ ${activeFiscalYear})` : ''}</span>
           </button>
           <button
             onClick={onOpenNewLeave}
@@ -107,7 +133,29 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Fiscal Year Filter */}
+          <div>
+            <select
+              value={activeFiscalYear}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
+              }}
+              className="w-full px-3 py-2 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+              title="เลือกสลับดูข้อมูลตามปีงบประมาณ"
+            >
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-normal">
+                ทุกปีงบประมาณ
+              </option>
+              {availableFiscalYearsList.map((fy) => (
+                <option key={fy} value={fy} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-semibold">
+                  {formatFiscalYearLabel(fy)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Search box */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -174,16 +222,22 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
           <div>
             พบข้อมูลการลาทั้งหมด <b className="text-slate-800 dark:text-slate-200">{filteredRecords.length}</b> รายการ (รวม{' '}
             <b className="text-indigo-600 dark:text-indigo-400">{totalFilteredDays}</b> วัน)
+            {activeFiscalYear !== 'all' && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
+                ปีงบประมาณ {activeFiscalYear}
+              </span>
+            )}
           </div>
-          {(searchQuery || selectedType !== 'all' || selectedDept !== 'all' || selectedStaffId !== 'all') && (
+          {(searchQuery || selectedType !== 'all' || selectedDept !== 'all' || selectedStaffId !== 'all' || activeFiscalYear !== 'all') && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setSelectedType('all');
                 setSelectedDept('all');
                 setSelectedStaffId('all');
+                handleFiscalYearChange('all');
               }}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer"
+              className="text-xs text-rose-500 hover:text-rose-700 font-medium cursor-pointer"
             >
               ล้างตัวกรองทั้งหมด
             </button>
@@ -246,12 +300,17 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
 
                       {/* Date Range */}
                       <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-medium">
-                        {formatThaiDateShort(r.startDate)}
-                        {r.startDate !== r.endDate && (
-                          <span className="block text-[11px] text-slate-400 dark:text-slate-500">
-                            ถึง {formatThaiDateShort(r.endDate)}
-                          </span>
-                        )}
+                        <div>
+                          {formatThaiDateShort(r.startDate)}
+                          {r.startDate !== r.endDate && (
+                            <span className="block text-[11px] text-slate-400 dark:text-slate-500">
+                              ถึง {formatThaiDateShort(r.endDate)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60">
+                          ปีงบฯ {getFiscalYear(r.startDate)}
+                        </span>
                       </td>
 
                       {/* Days count */}

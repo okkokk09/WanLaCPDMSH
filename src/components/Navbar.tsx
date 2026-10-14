@@ -17,9 +17,13 @@ import {
   KeyRound,
   LogOut,
   UserCheck,
+  Calendar,
+  ChevronDown,
+  CheckCircle,
 } from 'lucide-react';
 import type { UserRole, Staff } from '../types';
 import { exportDataToJson, importDataFromJson, resetAllData } from '../utils/storage';
+import { formatFiscalYearLabel } from '../utils/dateUtils';
 
 export type ActiveTab = 'dashboard' | 'records' | 'calendar' | 'staff' | 'balance' | 'my-leave';
 
@@ -36,6 +40,9 @@ interface NavbarProps {
   staffList: Staff[];
   selectedStaffId: string | null;
   onSelectStaff: (staffId: string) => void;
+  selectedFiscalYear?: number | 'all';
+  availableFiscalYears?: number[];
+  onSelectFiscalYear?: (fy: number | 'all') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,9 +58,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   staffList,
   selectedStaffId,
   onSelectStaff,
+  selectedFiscalYear,
+  availableFiscalYears,
+  onSelectFiscalYear,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDataMenu, setShowDataMenu] = useState(false);
+  const [showFiscalYearMenu, setShowFiscalYearMenu] = useState(false);
 
   const isAdmin = userRole === 'admin';
 
@@ -161,6 +172,73 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-2">
+            {/* Fiscal Year Switcher Dropdown */}
+            {onSelectFiscalYear && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowFiscalYearMenu(!showFiscalYearMenu)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs border-emerald-300 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60"
+                  title="คลิกเพื่อสลับดูข้อมูลตามปีงบประมาณ"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{selectedFiscalYear === 'all' ? 'ทุกปีงบฯ' : `ปีงบฯ ${selectedFiscalYear}`}</span>
+                  <ChevronDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                </button>
+
+                {showFiscalYearMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowFiscalYearMenu(false)} />
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                        สลับดูข้อมูลตามปีงบประมาณ
+                      </div>
+                      {(availableFiscalYears ?? []).map((fy) => (
+                        <button
+                          key={fy}
+                          type="button"
+                          onClick={() => {
+                            onSelectFiscalYear(fy);
+                            setShowFiscalYearMenu(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-left cursor-pointer transition-colors ${
+                            selectedFiscalYear === fy
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span>ปีงบประมาณ {fy}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+                              {formatFiscalYearLabel(fy, true).replace(`ปีงบประมาณ ${fy} `, '')}
+                            </span>
+                          </div>
+                          {selectedFiscalYear === fy && <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                        </button>
+                      ))}
+                      <div className="border-t border-slate-100 dark:border-slate-800 mt-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectFiscalYear('all');
+                            setShowFiscalYearMenu(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2 text-xs text-left cursor-pointer transition-colors ${
+                            selectedFiscalYear === 'all'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <span>ทุกปีงบประมาณ (ดูทั้งหมด)</span>
+                          {selectedFiscalYear === 'all' && <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Theme Toggle Button (Light/Dark) */}
             <button
               onClick={onToggleTheme}
@@ -359,6 +437,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
           </div>
+
+          {/* Mobile Fiscal Year Selector */}
+          {onSelectFiscalYear && (
+            <div className="py-1">
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                ปีงบประมาณ:
+              </label>
+              <select
+                value={selectedFiscalYear}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onSelectFiscalYear(val === 'all' ? 'all' : parseInt(val, 10));
+                }}
+                className="w-full px-3 py-2 bg-emerald-50/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-200"
+              >
+                <option value="all">ทุกปีงบประมาณ (ดูทั้งหมด)</option>
+                {(availableFiscalYears ?? []).map((fy) => (
+                  <option key={fy} value={fy}>
+                    {formatFiscalYearLabel(fy)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Mobile Staff Selector if staff mode */}
           {!isAdmin && (

@@ -194,3 +194,131 @@ export function getFiscalYearDateRange(fiscalYear: number): { startDate: string;
     endDate: `${ceEndYear}-09-30`,
   };
 }
+
+// List of available fiscal years sorted descending, e.g. [2570, 2569]
+export function getAvailableFiscalYears(records?: { startDate: string; endDate?: string }[]): number[] {
+  const currentFY = getCurrentFiscalYear();
+  const years = new Set<number>([currentFY, 2570, 2569]);
+  if (records) {
+    for (const r of records) {
+      if (r.startDate) years.add(getFiscalYear(r.startDate));
+      if (r.endDate) years.add(getFiscalYear(r.endDate));
+    }
+  }
+  return Array.from(years).sort((a, b) => b - a);
+}
+
+// Format fiscal year label with date range
+export function formatFiscalYearLabel(fy: number | 'all', full: boolean = false): string {
+  if (fy === 'all') return 'ทุกปีงบประมาณ';
+  const range = getFiscalYearDateRange(fy);
+  const startParts = range.startDate.split('-');
+  const startBE = parseInt(startParts[0], 10) + 543;
+  if (full) {
+    return `ปีงบประมาณ ${fy} (1 ต.ค. ${startBE} – 30 ก.ย. ${fy})`;
+  }
+  return `ปีงบฯ ${fy} (1 ต.ค. ${startBE % 100} – 30 ก.ย. ${fy % 100})`;
+}
+
+export interface LeaveBreakdown {
+  totalCalendarDays: number;
+  calculatedDays: number;
+  weekendDaysCount: number;
+  holidaysCount: number;
+  holidaysList: { date: string; name: string }[];
+  skippedDates: string[];
+}
+
+// Detailed calculation of leave days, weekends and official holidays
+export function getLeaveDaysBreakdown(
+  startDateStr: string,
+  endDateStr: string,
+  period: 'full' | 'morning' | 'afternoon' = 'full',
+  skipWeekends: boolean = true
+): LeaveBreakdown {
+  if (!startDateStr || !endDateStr || startDateStr > endDateStr) {
+    return {
+      totalCalendarDays: 0,
+      calculatedDays: 0,
+      weekendDaysCount: 0,
+      holidaysCount: 0,
+      holidaysList: [],
+      skippedDates: [],
+    };
+  }
+
+  let totalCalendarDays = 0;
+  let weekendDaysCount = 0;
+  let holidaysCount = 0;
+  const holidaysList: { date: string; name: string }[] = [];
+  const skippedDates: string[] = [];
+  let calculatedDays = 0;
+
+  if (period === 'morning' || period === 'afternoon') {
+    totalCalendarDays = 1;
+    const isWk = isWeekend(startDateStr);
+    const hol = getHolidayInfo(startDateStr);
+    if (isWk) {
+      weekendDaysCount = 1;
+      skippedDates.push(startDateStr);
+    }
+    if (hol) {
+      holidaysList.push({ date: startDateStr, name: hol.name });
+      if (!isWk) {
+        holidaysCount = 1;
+        skippedDates.push(startDateStr);
+      }
+    }
+    if (skipWeekends && (isWk || hol)) {
+      calculatedDays = 0;
+    } else {
+      calculatedDays = 0.5;
+    }
+    return {
+      totalCalendarDays,
+      calculatedDays,
+      weekendDaysCount,
+      holidaysCount,
+      holidaysList,
+      skippedDates,
+    };
+  }
+
+  let current = new Date(startDateStr + 'T00:00:00');
+  const end = new Date(endDateStr + 'T00:00:00');
+
+  while (current <= end) {
+    totalCalendarDays += 1;
+    const dStr = toDateString(current);
+    const dayOfWeek = current.getDay();
+    const isWk = dayOfWeek === 0 || dayOfWeek === 6;
+    const hol = getHolidayInfo(dStr);
+
+    if (isWk) {
+      weekendDaysCount += 1;
+      skippedDates.push(dStr);
+    }
+
+    if (hol) {
+      holidaysList.push({ date: dStr, name: hol.name });
+      if (!isWk) {
+        holidaysCount += 1;
+        skippedDates.push(dStr);
+      }
+    }
+
+    if (!skipWeekends || (!isWk && !hol)) {
+      calculatedDays += 1;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return {
+    totalCalendarDays,
+    calculatedDays,
+    weekendDaysCount,
+    holidaysCount,
+    holidaysList,
+    skippedDates,
+  };
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Staff, LeaveRecord, UserRole } from './types';
 import { Navbar } from './components/Navbar';
 import type { ActiveTab } from './components/Navbar';
@@ -23,12 +23,17 @@ import {
   syncRecordsFromGitHub,
 } from './utils/storage';
 import { initStreamlitBridge, setStreamlitFrameHeight } from './utils/streamlitBridge';
+import { getCurrentFiscalYear, getAvailableFiscalYears } from './utils/dateUtils';
 
 export const App: React.FC = () => {
   // User role state ('admin' | 'staff')
   const [userRole, setUserRoleState] = useState<UserRole>(() => getUserRole());
   const [myStaffId, setMyStaffIdState] = useState<string | null>(null);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+
+  // Fiscal year state (Buddhist Era, e.g. 2570, 2569, or 'all')
+  const currentFiscalYear = getCurrentFiscalYear();
+  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | 'all'>(currentFiscalYear);
 
   // Active tab state - default based on role
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
@@ -38,6 +43,11 @@ export const App: React.FC = () => {
 
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [records, setRecords] = useState<LeaveRecord[]>([]);
+
+  // Dynamically calculate available fiscal years from records
+  const availableFiscalYears = useMemo(() => {
+    return getAvailableFiscalYears(records);
+  }, [records]);
 
   // Modals state
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -245,6 +255,9 @@ export const App: React.FC = () => {
         staffList={staffList}
         selectedStaffId={myStaffId}
         onSelectStaff={handleSelectStaff}
+        selectedFiscalYear={selectedFiscalYear}
+        availableFiscalYears={availableFiscalYears}
+        onSelectFiscalYear={setSelectedFiscalYear}
       />
 
       {/* Main Content Area */}
@@ -258,6 +271,9 @@ export const App: React.FC = () => {
             onOpenNewStaff={handleOpenNewStaff}
             onNavigateTab={setActiveTab}
             onDeleteRecord={handleDeleteLeaveRecord}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={setSelectedFiscalYear}
           />
         )}
 
@@ -267,6 +283,9 @@ export const App: React.FC = () => {
             records={records}
             onOpenNewLeave={handleOpenNewLeave}
             onDeleteRecord={handleDeleteLeaveRecord}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={setSelectedFiscalYear}
           />
         )}
 
@@ -285,6 +304,9 @@ export const App: React.FC = () => {
           <LeaveBalanceView
             staffList={staffList}
             records={records}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={setSelectedFiscalYear}
           />
         )}
 
@@ -308,6 +330,9 @@ export const App: React.FC = () => {
             records={records}
             selectedStaffId={myStaffId}
             onSelectStaff={handleSelectStaff}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={setSelectedFiscalYear}
           />
         )}
       </main>

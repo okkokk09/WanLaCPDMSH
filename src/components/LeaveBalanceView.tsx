@@ -16,19 +16,35 @@ import { getFiscalYear, getCurrentFiscalYear } from '../utils/dateUtils';
 interface LeaveBalanceViewProps {
   staffList: Staff[];
   records: LeaveRecord[];
+  selectedFiscalYear?: number | 'all';
+  availableFiscalYears?: number[];
+  onSelectFiscalYear?: (fy: number | 'all') => void;
 }
 
 export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   staffList,
   records,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
   const currentFY = getCurrentFiscalYear();
-  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | 'all'>(currentFY);
+  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFY);
+  const selectedFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+
+  const handleFiscalYearChange = (fy: number | 'all') => {
+    if (onSelectFiscalYearProp) {
+      onSelectFiscalYearProp(fy);
+    } else {
+      setLocalFiscalYear(fy);
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
 
   // Available fiscal years
   const fiscalYears = useMemo(() => {
+    if (availableFiscalYearsProp) return availableFiscalYearsProp;
     const years = new Set<number>();
     years.add(currentFY);
     years.add(currentFY - 1);
@@ -36,7 +52,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
       years.add(getFiscalYear(r.startDate));
     });
     return Array.from(years).sort((a, b) => b - a);
-  }, [records, currentFY]);
+  }, [records, currentFY, availableFiscalYearsProp]);
 
   // Calculate summaries for all staff based on selected fiscal year
   const summaries = useMemo(() => {
@@ -186,7 +202,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
               value={selectedFiscalYear}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedFiscalYear(val === 'all' ? 'all' : parseInt(val, 10));
+                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
               }}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >

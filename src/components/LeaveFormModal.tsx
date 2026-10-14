@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { X, Calendar, AlertTriangle, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { Staff, LeaveRecord, LeaveTypeId, LeavePeriod } from '../types';
 import { LEAVE_TYPES } from '../utils/constants';
-import { calculateLeaveDays, toDateString, formatThaiDateShort } from '../utils/dateUtils';
+import { toDateString, formatThaiDateShort, getLeaveDaysBreakdown } from '../utils/dateUtils';
 import { calculateStaffSummaries } from '../utils/storage';
 
 interface LeaveFormModalProps {
@@ -81,10 +81,12 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     return (currentSummary.remainingByType[leaveTypeId] ?? 0) + extra;
   }, [currentSummary, leaveTypeId, initialRecord, staffId]);
 
-  // Calculate leave days
-  const calculatedDays = useMemo(() => {
-    return calculateLeaveDays(startDate, endDate, period, skipWeekends);
+  // Calculate leave days & holiday breakdown
+  const breakdown = useMemo(() => {
+    return getLeaveDaysBreakdown(startDate, endDate, period, skipWeekends);
   }, [startDate, endDate, period, skipWeekends]);
+
+  const calculatedDays = breakdown.calculatedDays;
 
   // Check quota overflow
   const isOverQuota = calculatedDays > remainingDays;
@@ -269,23 +271,60 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
             </div>
           </div>
 
-          {/* Options: Skip weekends */}
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={skipWeekends}
-                onChange={(e) => setSkipWeekends(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
-              />
-              <span>ไม่นับรวมวันหยุดเสาร์ - อาทิตย์ และวันหยุดราชการ</span>
-            </label>
+          {/* Options: Skip weekends & holidays */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={skipWeekends}
+                  onChange={(e) => setSkipWeekends(e.target.checked)}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
+                />
+                <span className="font-medium">ไม่นับรวมวันหยุดเสาร์ - อาทิตย์ และวันหยุดราชการ</span>
+              </label>
 
-            {/* Calculated Days pill */}
-            <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold">
-              <Clock className="w-3.5 h-3.5" />
-              <span>คำนวณวันลา: {calculatedDays} วัน</span>
+              {/* Calculated Days pill */}
+              <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold">
+                <Clock className="w-3.5 h-3.5" />
+                <span>คำนวณวันลา: {calculatedDays} วัน</span>
+              </div>
             </div>
+
+            {/* Holiday Deduction Details Banner */}
+            {skipWeekends && breakdown.holidaysList.length > 0 && (
+              <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 animate-in fade-in">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>ระบบหักวันหยุดราชการออกอัตโนมัติ ({breakdown.holidaysCount} วัน):</span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {breakdown.holidaysList.map((h, i) => (
+                    <span
+                      key={`${h.date}-${i}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-semibold border border-amber-200/80 dark:border-amber-800/60 shadow-2xs"
+                    >
+                      <span>{h.name}</span>
+                      <span className="text-[10px] opacity-75 font-normal">({formatThaiDateShort(h.date)})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Weekend & Holiday Summary Note */}
+            {skipWeekends && (breakdown.weekendDaysCount > 0 || breakdown.holidaysCount > 0) && (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-1">
+                <span>
+                  ช่วงวันที่เลือก: ทั้งหมด {breakdown.totalCalendarDays} วัน
+                  {breakdown.weekendDaysCount > 0 && ` • เสาร์-อาทิตย์ ${breakdown.weekendDaysCount} วัน`}
+                  {breakdown.holidaysCount > 0 && ` • วันหยุดราชการ ${breakdown.holidaysCount} วัน`}
+                </span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  (นับวันลาจริง: {calculatedDays} วัน)
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Quota warning or status info */}

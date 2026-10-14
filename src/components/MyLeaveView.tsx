@@ -14,13 +14,16 @@ import {
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP } from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
-import { formatThaiDateFull, getCurrentFiscalYear } from '../utils/dateUtils';
+import { formatThaiDateFull, getCurrentFiscalYear, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
 
 interface MyLeaveViewProps {
   staffList: Staff[];
   records: LeaveRecord[];
   selectedStaffId: string | null;
   onSelectStaff: (staffId: string) => void;
+  selectedFiscalYear?: number | 'all';
+  availableFiscalYears?: number[];
+  onSelectFiscalYear?: (fy: number | 'all') => void;
 }
 
 export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
@@ -28,10 +31,27 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   records,
   selectedStaffId,
   onSelectStaff,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
   const [filterLeaveType, setFilterLeaveType] = useState<string>('all');
   const currentFiscalYear = getCurrentFiscalYear();
+  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFiscalYear);
+
+  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  const availableFiscalYearsList = useMemo(() => {
+    return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
+  }, [availableFiscalYearsProp, records]);
+
+  const handleFiscalYearChange = (fy: number | 'all') => {
+    if (onSelectFiscalYearProp) {
+      onSelectFiscalYearProp(fy);
+    } else {
+      setLocalFiscalYear(fy);
+    }
+  };
 
   // Find the selected staff member
   const currentStaff = useMemo(() => {
@@ -39,20 +59,24 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
     return staffList.find((s) => s.id === selectedStaffId) || null;
   }, [staffList, selectedStaffId]);
 
-  // Calculate summaries for this staff member
+  // Calculate summaries for this staff member based on active fiscal year
   const staffSummary = useMemo(() => {
     if (!currentStaff) return null;
-    const summaries = calculateStaffSummaries([currentStaff], records, currentFiscalYear);
+    const summaries = calculateStaffSummaries([currentStaff], records, activeFiscalYear);
     return summaries[0] || null;
-  }, [currentStaff, records, currentFiscalYear]);
+  }, [currentStaff, records, activeFiscalYear]);
 
-  // Filter leave records for current staff
+  // Filter leave records for current staff by selected fiscal year
   const myRecords = useMemo(() => {
     if (!currentStaff) return [];
     return records
-      .filter((r) => r.staffId === currentStaff.id)
+      .filter((r) => {
+        if (r.staffId !== currentStaff.id) return false;
+        if (activeFiscalYear === 'all') return true;
+        return getFiscalYear(r.startDate) === activeFiscalYear;
+      })
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [currentStaff, records]);
+  }, [currentStaff, records, activeFiscalYear]);
 
   // Filtered records by search and type
   const filteredRecords = useMemo(() => {
@@ -146,8 +170,8 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                 {currentStaff.name}
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                ปีงบประมาณ {currentFiscalYear}
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                {activeFiscalYear !== 'all' ? `ปีงบประมาณ ${activeFiscalYear}` : 'ทุกปีงบประมาณ'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
@@ -159,11 +183,34 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
           </div>
         </div>
 
-        {/* Switch staff button / selector */}
-        <div className="w-full md:w-auto flex items-center gap-2">
+        {/* Switch fiscal year & staff */}
+        <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {/* Fiscal Year Switcher */}
+          <div>
+            <label className="block text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold mb-1">
+              ปีงบประมาณ:
+            </label>
+            <select
+              value={activeFiscalYear}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
+              }}
+              className="w-full sm:w-44 px-3 py-2 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+            >
+              <option value="all">ทุกปีงบประมาณ (ทั้งหมด)</option>
+              {availableFiscalYearsList.map((fy) => (
+                <option key={fy} value={fy}>
+                  {formatFiscalYearLabel(fy)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Switch staff selector */}
           <div className="flex-1 md:w-56">
             <label className="block text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold mb-1">
-              สลับดูข้อมูลบุคลากรท่านอื่น:
+              สลับดูบุคลากรท่านอื่น:
             </label>
             <select
               value={currentStaff.id}

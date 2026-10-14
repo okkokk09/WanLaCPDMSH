@@ -14,7 +14,15 @@ import {
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPE_MAP } from '../utils/constants';
-import { toDateString, formatThaiDateShort, isDateInLeaveRange, getCurrentFiscalYear } from '../utils/dateUtils';
+import {
+  toDateString,
+  formatThaiDateShort,
+  isDateInLeaveRange,
+  getCurrentFiscalYear,
+  getFiscalYear,
+  getAvailableFiscalYears,
+  formatFiscalYearLabel,
+} from '../utils/dateUtils';
 import { exportSummaryToExcel, exportSummaryToCsv, calculateStaffSummaries } from '../utils/storage';
 
 interface DashboardViewProps {
@@ -24,6 +32,9 @@ interface DashboardViewProps {
   onOpenNewStaff: () => void;
   onNavigateTab: (tab: 'records' | 'calendar' | 'staff' | 'balance') => void;
   onDeleteRecord: (recordId: string) => void;
+  selectedFiscalYear?: number | 'all';
+  availableFiscalYears?: number[];
+  onSelectFiscalYear?: (fy: number | 'all') => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -33,10 +44,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewStaff,
   onNavigateTab,
   onDeleteRecord,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear,
 }) => {
   const todayStr = useMemo(() => toDateString(new Date()), []);
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
   const currentFiscalYear = getCurrentFiscalYear();
+  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : currentFiscalYear;
+  const availableFiscalYearsList = useMemo(() => {
+    return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
+  }, [availableFiscalYearsProp, records]);
 
   // People on leave today
   const leavesToday = useMemo(() => {
@@ -48,6 +66,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         leaveType: LEAVE_TYPE_MAP.get(r.leaveTypeId),
       }));
   }, [records, todayStr, staffMap]);
+
+  // Leave records in selected fiscal year
+  const recordsInFY = useMemo(() => {
+    return records.filter(
+      (r) =>
+        r.status !== 'rejected' &&
+        (activeFiscalYear === 'all' || getFiscalYear(r.startDate) === activeFiscalYear)
+    );
+  }, [records, activeFiscalYear]);
+
+  const totalDaysInFY = useMemo(() => {
+    return recordsInFY.reduce((sum, r) => sum + r.daysCount, 0);
+  }, [recordsInFY]);
 
   // Current month leave records
   const currentMonthPrefix = todayStr.substring(0, 7); // "YYYY-MM"
@@ -63,18 +94,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return recordsThisMonth.reduce((sum, r) => sum + r.daysCount, 0);
   }, [recordsThisMonth]);
 
-
-  // Recent 5 leave records
+  // Recent 5 leave records (filtered by fiscal year if selected)
   const recentRecords = useMemo(() => {
     return [...records]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter(
+        (r) =>
+          activeFiscalYear === 'all' || getFiscalYear(r.startDate) === activeFiscalYear
+      )
+      .sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime())
       .slice(0, 5);
-  }, [records]);
+  }, [records, activeFiscalYear]);
 
   // Staff leave summaries for quick export
   const staffSummaries = useMemo(() => {
-    return calculateStaffSummaries(staffList, records, currentFiscalYear);
-  }, [staffList, records, currentFiscalYear]);
+    return calculateStaffSummaries(staffList, records, activeFiscalYear);
+  }, [staffList, records, activeFiscalYear]);
 
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
@@ -83,17 +117,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Top Welcome & Quick Actions Bar */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-medium text-indigo-200 backdrop-blur-xs">
               📅 ยินดีต้อนรับสู่ระบบบันทึกวันลา
             </span>
-            <span className="inline-block px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold text-emerald-300 backdrop-blur-xs">
-              ปีงบประมาณ {currentFiscalYear}
-            </span>
+
+            {/* Fiscal Year Switcher Button Group */}
+            <div className="inline-flex items-center bg-black/30 p-1 rounded-xl border border-white/15 backdrop-blur-xs gap-1">
+              <span className="text-[11px] font-semibold text-indigo-200 px-2 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>ปีงบประมาณ:</span>
+              </span>
+              {availableFiscalYearsList.map((fy) => {
+                const isSelected = activeFiscalYear === fy;
+                return (
+                  <button
+                    key={fy}
+                    type="button"
+                    onClick={() => onSelectFiscalYear?.(fy)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-300/40'
+                        : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    ปีงบฯ {fy}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => onSelectFiscalYear?.('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeFiscalYear === 'all'
+                    ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-300/40'
+                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                ทั้งหมด
+              </button>
+            </div>
           </div>
           <h2 className="text-2xl font-bold tracking-tight">ภาพรวมข้อมูลการลาบุคลากร</h2>
-          <p className="text-sm text-indigo-200 mt-1">
-            วันนี้ {formatThaiDateShort(todayStr)} • บริหารจัดการวันลาบุคลากรได้ครบจบในที่เดียว
+          <p className="text-xs sm:text-sm text-indigo-200 mt-1">
+            วันนี้ {formatThaiDateShort(todayStr)} • {activeFiscalYear !== 'all' ? formatFiscalYearLabel(activeFiscalYear, true) : 'แสดงรวมทุกปีงบประมาณ'}
           </p>
         </div>
 
@@ -218,25 +285,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        {/* Card 3: Days used this month */}
+        {/* Card 3: Days used in selected fiscal year */}
         <div
           onClick={() => onNavigateTab('records')}
           className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700/60 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              การลาในเดือนนี้
+              {activeFiscalYear === 'all' ? 'การลาทั้งหมด' : `การลาในปีงบฯ ${activeFiscalYear}`}
             </span>
             <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Clock className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalDaysThisMonth}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">วัน ({recordsThisMonth.length} รายการ)</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalDaysInFY}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน ({recordsInFY.length} รายการ)</span>
           </div>
-          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-            <span>ดูรายการบันทึกทั้งหมด</span> →
+          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center justify-between">
+            <span>เดือนนี้: {totalDaysThisMonth} วัน</span>
+            <span>ดูประวัติทั้งหมด →</span>
           </p>
         </div>
       </div>
