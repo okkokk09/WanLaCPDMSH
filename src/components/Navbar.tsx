@@ -25,26 +25,44 @@ import type { UserRole, Staff } from '../types';
 import { exportDataToJson, importDataFromJson, resetAllData } from '../utils/storage';
 import { formatFiscalYearLabel } from '../utils/dateUtils';
 
+/**
+ * ชนิดของแท็บเมนูที่กำลังเปิดใช้งานในระบบ
+ */
 export type ActiveTab = 'dashboard' | 'records' | 'calendar' | 'staff' | 'balance' | 'my-leave';
 
+/**
+ * โครงสร้าง Props ของแถบเมนูด้านบน (Navbar)
+ */
 interface NavbarProps {
-  activeTab: ActiveTab;
-  onTabChange: (tab: ActiveTab) => void;
-  onOpenNewLeave: () => void;
-  onDataRefresh: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
-  userRole: UserRole;
-  onOpenAdminLogin: () => void;
-  onSwitchToStaff: () => void;
-  staffList: Staff[];
-  selectedStaffId: string | null;
-  onSelectStaff: (staffId: string) => void;
-  selectedFiscalYear?: number | 'all';
-  availableFiscalYears?: number[];
-  onSelectFiscalYear?: (fy: number | 'all') => void;
+  activeTab: ActiveTab;                                       // แท็บที่กำลังเลือก
+  onTabChange: (tab: ActiveTab) => void;                      // ฟังก์ชันเปลี่ยนแท็บ
+  onOpenNewLeave: () => void;                                 // ฟังก์ชันเปิด Modal บันทึกการลาใหม่
+  onDataRefresh: () => void;                                  // ฟังก์ชันรีเฟรชข้อมูล
+  theme: 'light' | 'dark';                                    // ธีมสีปัจจุบัน
+  onToggleTheme: () => void;                                  // ฟังก์ชันสลับธีมสี
+  userRole: UserRole;                                         // สิทธิ์ผู้ใช้งาน ('admin' หรือ 'staff')
+  onOpenAdminLogin: () => void;                               // เปิด Modal เข้าสู่ระบบผู้ดูแลระบบ
+  onSwitchToStaff: () => void;                                // สลับกลับมาเป็นเจ้าหน้าที่ทั่วไป
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  selectedStaffId: string | null;                             // รหัสบุคลากรที่เลือกกรอง
+  onSelectStaff: (staffId: string) => void;                  // ฟังก์ชันเลือกบุคลากร
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือก
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
 }
 
+/**
+ * คอมโพเนนต์แถบเมนูด้านบน (Navbar Component)
+ * ประกอบด้วย:
+ * - โลโก้และชื่อหน่วยงาน "สำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน"
+ * - เมนูหลักตามสิทธิ์ (Admin: แดชบอร์ด, บันทึกการลา, ปฏิทินวันลา, จัดการบุคลากร, สรุปวันลาคงเหลือ / Staff: ปฏิทินวันลา, วันลาของฉัน)
+ * - สวิตช์สลับปีงบประมาณ (Fiscal Year Switcher)
+ * - เมนูตัวเลือกบุคลากร (Staff Selector)
+ * - ปุ่มบันทึกการลาใหม่ (Quick Action)
+ * - เมนูจัดการข้อมูลสำรอง (Export / Import JSON, Factory Reset)
+ * - ปุ่มสลับธีมสี Light / Dark Mode
+ * - ปุ่มสลับโหมดผู้ดูแลระบบ / เจ้าหน้าที่ทั่วไป
+ */
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
@@ -62,13 +80,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   availableFiscalYears,
   onSelectFiscalYear,
 }) => {
+  // สถานะเปิด/ปิดเมนูบนหน้าจออุปกรณ์เคลื่อนที่ (Mobile Menu)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // สถานะเปิด/ปิดเมนูจัดการข้อมูลสำรอง (Backup/Restore Dropdown)
   const [showDataMenu, setShowDataMenu] = useState(false);
+  // สถานะเปิด/ปิดเมนูเลือกปีงบประมาณบนมือถือ
   const [showFiscalYearMenu, setShowFiscalYearMenu] = useState(false);
 
   const isAdmin = userRole === 'admin';
 
-  // Tabs based on user role
+  // รายการเมนูหลักที่แสดงผลตามสิทธิ์ของผู้ใช้งาน
   const navItems = isAdmin
     ? [
         { id: 'dashboard' as ActiveTab, label: 'แดชบอร์ด', icon: LayoutDashboard },
@@ -82,6 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         { id: 'my-leave' as ActiveTab, label: 'วันลาของฉัน', icon: UserCheck },
       ];
 
+  // รีเซ็ตข้อมูลกลับเป็นค่าเริ่มต้น (Factory Reset)
   const handleResetData = () => {
     if (
       window.confirm(
@@ -94,6 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  // นำเข้าข้อมูลระบบจากไฟล์ JSON
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

@@ -1,11 +1,16 @@
 import type { LeaveTypeConfig, LeaveTypeId } from '../types';
 
+/**
+ * รายการประเภทการลาหลักตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555
+ * ประกอบด้วย: ลาป่วย, ลากิจส่วนตัว, ลาพักผ่อน, ลาคลอดบุตร
+ * พร้อมกำหนดค่าโควตาวันลาเริ่มต้นและชุดสีประจำประเภทการลา (Tailwind CSS classes)
+ */
 export const LEAVE_TYPES: LeaveTypeConfig[] = [
   {
     id: 'sick',
     name: 'ลาป่วย',
     shortName: 'ป่วย',
-    defaultQuota: 60,
+    defaultQuota: 60, // โควตามาตรฐานข้าราชการ 60 วันทำการต่อปีงบประมาณ
     color: {
       bg: 'bg-red-50',
       text: 'text-red-700',
@@ -19,7 +24,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
     id: 'business',
     name: 'ลากิจส่วนตัว',
     shortName: 'กิจ',
-    defaultQuota: 45,
+    defaultQuota: 45, // โควตามาตรฐานข้าราชการ 45 วันทำการต่อปีงบประมาณ
     color: {
       bg: 'bg-blue-50',
       text: 'text-blue-700',
@@ -33,7 +38,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
     id: 'vacation',
     name: 'ลาพักผ่อน',
     shortName: 'พักผ่อน',
-    defaultQuota: 10,
+    defaultQuota: 10, // โควตาวันลาพักผ่อนประจำปี 10 วันทำการ (สะสมรวมไม่เกิน 20 หรือ 30 วันตามอายุงาน)
     color: {
       bg: 'bg-emerald-50',
       text: 'text-emerald-700',
@@ -47,7 +52,7 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
     id: 'maternity',
     name: 'ลาคลอดบุตร',
     shortName: 'คลอด',
-    defaultQuota: 90,
+    defaultQuota: 90, // โควตาลาคลอดบุตร 90 วัน
     color: {
       bg: 'bg-pink-50',
       text: 'text-pink-700',
@@ -59,6 +64,9 @@ export const LEAVE_TYPES: LeaveTypeConfig[] = [
   },
 ];
 
+/**
+ * รายการประเภทการลาทั้งหมดรวมประเภทการลาเสริม (สำรองกรณีต้องการบันทึกการลาประเภทอื่น)
+ */
 const FALLBACK_LEAVE_TYPES: LeaveTypeConfig[] = [
   ...LEAVE_TYPES,
   {
@@ -91,10 +99,16 @@ const FALLBACK_LEAVE_TYPES: LeaveTypeConfig[] = [
   },
 ];
 
+/**
+ * โครงสร้าง Map สำหรับค้นหาการตั้งค่าและสีของประเภทการลา (LeaveTypeConfig) จาก id อย่างรวดเร็ว (O(1))
+ */
 export const LEAVE_TYPE_MAP = new Map<LeaveTypeId, LeaveTypeConfig>(
   FALLBACK_LEAVE_TYPES.map((t) => [t.id, t])
 );
 
+/**
+ * รายชื่อกลุ่มงาน / ฝ่าย / กลุ่มส่งเสริมสหกรณ์ ในสังกัดสำนักงานสหกรณ์จังหวัด
+ */
 export const WORK_GROUPS = [
   'สหกรณ์จังหวัด',
   'ฝ่ายบริหารทั่วไป',
@@ -108,15 +122,24 @@ export const WORK_GROUPS = [
   'กลุ่มส่งเสริมสหกรณ์ 4',
 ];
 
+/**
+ * ตัวแปร alias ของ WORK_GROUPS เพื่อความเข้ากันได้กับโค้ดส่วนอื่น
+ */
 export const DEPARTMENTS = WORK_GROUPS;
 
+/**
+ * รูปแบบชุดสีสำหรับกลุ่มงาน (Tailwind CSS classes)
+ */
 export interface GroupColorConfig {
-  bg: string;
-  text: string;
-  border: string;
-  badge: string;
+  bg: string;     // สีพื้นหลัง
+  text: string;   // สีข้อความ
+  border: string; // สีกรอบ
+  badge: string;  // สไตล์สำหรับ Badge/Tag
 }
 
+/**
+ * การแมปชุดสีเฉพาะของแต่ละกลุ่มงาน เพื่อให้แสดงผลในปฏิทินและตารางได้อย่างสวยงามและแยกแยะได้ง่าย
+ */
 export const WORK_GROUP_COLORS: Record<string, GroupColorConfig> = {
   'สหกรณ์จังหวัด': {
     bg: 'bg-indigo-50',
@@ -180,6 +203,11 @@ export const WORK_GROUP_COLORS: Record<string, GroupColorConfig> = {
   },
 };
 
+/**
+ * ดึงชุดสีของกลุ่มงานตามชื่อ หากไม่พบจะคืนค่าชุดสีเทาเริ่มต้น
+ * @param deptName ชื่อกลุ่มงาน/ฝ่าย
+ * @returns ชุดสี GroupColorConfig
+ */
 export function getWorkGroupColor(deptName: string): GroupColorConfig {
   return (
     WORK_GROUP_COLORS[deptName] || {

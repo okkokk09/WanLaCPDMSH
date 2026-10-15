@@ -28,15 +28,27 @@ import {
 } from '../utils/storage';
 import { getCurrentFiscalYear } from '../utils/dateUtils';
 
+/**
+ * โครงสร้าง Props ของหน้าจอจัดการบุคลากร (StaffManagementView)
+ */
 interface StaffManagementViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  onOpenNewStaff: () => void;
-  onEditStaff: (staff: Staff) => void;
-  onDeleteStaff: (staffId: string) => void;
-  onUpdateStaffList?: (staffList: Staff[]) => void;
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  onOpenNewStaff: () => void;                                 // เปิด Modal เพิ่มบุคลากรใหม่
+  onEditStaff: (staff: Staff) => void;                        // เปิด Modal แก้ไขข้อมูลบุคลากร
+  onDeleteStaff: (staffId: string) => void;                   // ลบบุคลากร
+  onUpdateStaffList?: (staffList: Staff[]) => void;           // Callback เมื่อรายชื่อบุคลากรได้รับการอัปเดต (เช่น หลัง Rollover)
 }
 
+/**
+ * คอมโพเนนต์หน้าจอจัดการรายชื่อบุคลากรและโควตาวันลา (StaffManagementView)
+ * ประกอบด้วย:
+ * - ตัวจัดกลุ่มบุคลากรตามฝ่าย / กลุ่มงาน (Accordion ที่เปิดได้ทีละ 1 กลุ่มงาน)
+ * - ช่องค้นหาชื่อ, ตำแหน่ง หรือกลุ่มงาน
+ * - ปุ่มและ Modal สำหรับปรับรอบปีงบประมาณใหม่ (Rollover Fiscal Year) ตามระเบียบราชการ
+ * - ปุ่มย้อนกลับวันลาพักผ่อนสะสมยกมา (Revert Carried-over Days) กรณีเผลอกดปรับย้อนซ้ำ
+ * - ฟังก์ชันเพิ่ม, แก้ไข และลบบุคลากร
+ */
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   staffList,
   records,
@@ -45,27 +57,31 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onDeleteStaff,
   onUpdateStaffList,
 }) => {
+  // ข้อความค้นหา
   const [searchQuery, setSearchQuery] = useState('');
+  // ตัวกรองกลุ่มงาน
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  // สถานะเปิด/ปิด Modal จัดการปรับรอบปีงบประมาณ
   const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
-  // Single-open accordion: only one work group is open at any time
+  // กลุ่มงานที่กำลังเปิดดูข้อมูล (เปิดได้ทีละกลุ่มงานเพื่อความเรียบร้อย)
   const [openDept, setOpenDept] = useState<string | null>(null);
 
-  // Calculate summaries to see each staff member's total used days
+  // คำนวณสรุปยอดวันลาเพื่อดูสถิติการใช้วันลาของแต่ละคน
   const summaries = useMemo(() => {
     return calculateStaffSummaries(staffList, records);
   }, [staffList, records]);
 
+  // แผนผัง Map ค้นหาสรุปยอดวันลาตาม staffId
   const summaryMap = useMemo(() => {
     return new Map(summaries.map((s) => [s.staff.id, s]));
   }, [summaries]);
 
-  // Unique departments for filter
+  // รายชื่อกลุ่มงานทั้งหมดที่ไม่ซ้ำกัน
   const departments = useMemo(() => {
     return Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
   }, [staffList]);
 
-  // Filtered staff list
+  // รายชื่อบุคลากรหลังผ่านการกรองตามคำค้นหาและกลุ่มงาน
   const filteredStaff = useMemo(() => {
     return staffList.filter((s) => {
       const q = searchQuery.toLowerCase().trim();
@@ -81,7 +97,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     });
   }, [staffList, searchQuery, selectedDept]);
 
-  // Group filtered staff by work group (preserving official order)
+  // จัดกลุ่มบุคลากรตามกลุ่มงาน/ฝ่าย โดยเรียงลำดับกลุ่มงานตามระเบียบมาตรฐาน
   const groupedStaff = useMemo(() => {
     const groupOrder = Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
     const groups: {
@@ -114,14 +130,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     return groups;
   }, [filteredStaff, staffList, summaryMap]);
 
-  // Auto-expand selected department if user filters by department
+  // เปิดกลุ่มงานอัตโนมัติหากผู้ใช้เลือกตัวกรองกลุ่มงาน
   useEffect(() => {
     if (selectedDept !== 'all') {
       setOpenDept(selectedDept);
     }
   }, [selectedDept]);
 
-  // Auto-expand first matching group when searching if current open group is no longer in results
+  // เมื่อค้นหา ให้เปิดกลุ่มงานแรกที่พบผลการค้นหาทันที
   useEffect(() => {
     if (searchQuery.trim() && groupedStaff.length > 0) {
       if (!groupedStaff.some((g) => g.dept === openDept)) {
@@ -130,17 +146,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     }
   }, [searchQuery, groupedStaff, openDept]);
 
-  // Accordion toggle: opening any group automatically closes all other groups
+  // สลับการเปิด/ปิด Accordion ของกลุ่มงาน (เมื่อเปิดกลุ่มใหม่ กลุ่มเดิมจะปิดอัตโนมัติ)
   const toggleGroup = (dept: string) => {
     setOpenDept((prev) => (prev === dept ? null : dept));
   };
 
+  // ย่อปิดทุกกลุ่มงาน
   const collapseAll = () => {
     setOpenDept(null);
   };
 
   const currentFiscalYear = getCurrentFiscalYear();
 
+  // ดำเนินการปรับรอบปีงบประมาณใหม่ตามระเบียบข้าราชการ (คำนวณวันลาสะสมยกมาที่ถูกต้อง)
   const handleApplyCorrectRollover = () => {
     const prevFY = currentFiscalYear - 1;
     const updated = rolloverFiscalYear(staffList, records, prevFY, currentFiscalYear);
@@ -151,6 +169,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     alert(`ปรับยอดโควตาและแก้ไขวันลาสะสมยกมาตามสิทธิ์จริงเรียบร้อยแล้ว (${updated.length} ท่าน)`);
   };
 
+  // ย้อนกลับ/ล้างวันลาสะสมยกมาของทุกคนให้เป็น 0 วัน (กรณีเผลอกดปรับย้อนซ้ำ)
   const handleResetCarriedOver = () => {
     if (
       window.confirm(

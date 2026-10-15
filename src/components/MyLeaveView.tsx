@@ -16,16 +16,27 @@ import { LEAVE_TYPES, LEAVE_TYPE_MAP } from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
 import { formatThaiDateFull, getCurrentFiscalYear, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
 
+/**
+ * โครงสร้าง Props ของหน้าจอข้อมูลวันลาของฉัน (MyLeaveView)
+ */
 interface MyLeaveViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  selectedStaffId: string | null;
-  onSelectStaff: (staffId: string) => void;
-  selectedFiscalYear?: number | 'all';
-  availableFiscalYears?: number[];
-  onSelectFiscalYear?: (fy: number | 'all') => void;
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  selectedStaffId: string | null;                             // รหัสบุคลากรที่กำลังเลือกดู
+  onSelectStaff: (staffId: string) => void;                  // ฟังก์ชันเมื่อเปลี่ยนการเลือกบุคลากร
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
 }
 
+/**
+ * คอมโพเนนต์หน้าจอข้อมูลวันลาส่วนตัว (MyLeaveView)
+ * ประกอบด้วย:
+ * - ตัวเลือกบุคลากร (กรณีที่ยังไม่ได้เลือกบุคคล)
+ * - สวิตช์สลับปีงบประมาณ (Fiscal Year Switcher) เพื่อดูสถิติแยกปี
+ * - การ์ดแสดงสิทธิ์และโควตาวันลาคงเหลือส่วนตัว (ลาป่วย, ลากิจส่วนตัว, ลาพักผ่อน + สะสมยกมา, ลาคลอด)
+ * - ตารางประวัติการลาส่วนตัว พร้อมช่องค้นหาและตัวกรองประเภทการลา
+ */
 export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   staffList,
   records,
@@ -35,16 +46,22 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
+  // ช่องค้นหาในประวัติการลาส่วนตัว
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
+  // ตัวกรองประเภทการลา
   const [filterLeaveType, setFilterLeaveType] = useState<string>('all');
+  // ปีงบประมาณปัจจุบัน
   const currentFiscalYear = getCurrentFiscalYear();
   const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFiscalYear);
 
+  // ปีงบประมาณที่ใช้งานจริง
   const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
+  // จัดการการเปลี่ยนปีงบประมาณ
   const handleFiscalYearChange = (fy: number | 'all') => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
@@ -53,20 +70,20 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
     }
   };
 
-  // Find the selected staff member
+  // ค้นหาข้อมูลของบุคลากรที่เลือกปัจจุบัน
   const currentStaff = useMemo(() => {
     if (!selectedStaffId) return null;
     return staffList.find((s) => s.id === selectedStaffId) || null;
   }, [staffList, selectedStaffId]);
 
-  // Calculate summaries for this staff member based on active fiscal year
+  // คำนวณสรุปสถิติโควตาวันลาคงเหลือของบุคลากรท่านนี้ตามปีงบประมาณที่เลือก
   const staffSummary = useMemo(() => {
     if (!currentStaff) return null;
     const summaries = calculateStaffSummaries([currentStaff], records, activeFiscalYear);
     return summaries[0] || null;
   }, [currentStaff, records, activeFiscalYear]);
 
-  // Filter leave records for current staff by selected fiscal year
+  // กรองรายการประวัติการลาเฉพาะของบุคลากรท่านนี้ตามปีงบประมาณที่เลือก
   const myRecords = useMemo(() => {
     if (!currentStaff) return [];
     return records
@@ -78,7 +95,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
   }, [currentStaff, records, activeFiscalYear]);
 
-  // Filtered records by search and type
+  // กรองรายการประวัติการลาตามคำค้นหาและประเภทการลา
   const filteredRecords = useMemo(() => {
     return myRecords.filter((r) => {
       const matchType = filterLeaveType === 'all' || r.leaveTypeId === filterLeaveType;

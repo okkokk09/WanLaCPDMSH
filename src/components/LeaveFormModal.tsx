@@ -6,16 +6,27 @@ import { LEAVE_TYPES } from '../utils/constants';
 import { toDateString, formatThaiDateShort, getLeaveDaysBreakdown } from '../utils/dateUtils';
 import { calculateStaffSummaries } from '../utils/storage';
 
+/**
+ * โครงสร้าง Props ของหน้าต่าง Modal บันทึก/แก้ไขข้อมูลการลา
+ */
 interface LeaveFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (record: Omit<LeaveRecord, 'id' | 'createdAt'>) => void;
-  staffList: Staff[];
-  existingRecords: LeaveRecord[];
-  initialRecord?: LeaveRecord | null;
-  defaultDate?: string;
+  isOpen: boolean;                                                          // สถานะเปิด/ปิด Modal
+  onClose: () => void;                                                      // ฟังก์ชันปิด Modal
+  onSave: (record: Omit<LeaveRecord, 'id' | 'createdAt'>) => void;          // ฟังก์ชันบันทึกข้อมูลการลา
+  staffList: Staff[];                                                       // รายชื่อบุคลากรทั้งหมด
+  existingRecords: LeaveRecord[];                                           // ประวัติการลาเดิมสำหรับคำนวณโควตาคงเหลือ
+  initialRecord?: LeaveRecord | null;                                       // ข้อมูลการลาเดิม (กรณีเปิดเพื่อแก้ไข)
+  defaultDate?: string;                                                     // วันที่เริ่มต้นเริ่มต้น (กรณีคลิกจากปฏิทิน)
 }
 
+/**
+ * คอมโพเนนต์หน้าต่าง Modal บันทึก/แก้ไขข้อมูลการลา (LeaveFormModal)
+ * มีฟังก์ชันเด่น:
+ * 1. ตรวจสอบโควตาวันลาคงเหลือของบุคลากรที่เลือกแบบเรียลไทม์
+ * 2. คำนวณวันลาอัตโนมัติ โดยหักวันหยุดเสาร์-อาทิตย์ และวันหยุดนักขัตฤกษ์ พ.ศ. 2569–2570
+ * 3. แสดงแถบรายละเอียดชื่อวันหยุดราชการที่ได้รับการยกเว้น
+ * 4. แจ้งเตือนยืนยันหากขอลาเกินสิทธิ์คงเหลือ
+ */
 export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
   isOpen,
   onClose,
@@ -25,22 +36,25 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
   initialRecord,
   defaultDate,
 }) => {
+  // กำหนดวันที่เริ่มต้นเริ่มต้น (ถ้ามี defaultDate ส่งมาจากปฏิทินให้ใช้ค่านั้น มิฉะนั้นใช้วันนี้)
   const todayStr = useMemo(() => defaultDate || toDateString(new Date()), [defaultDate]);
 
+  // ฟิลด์ข้อมูลในฟอร์ม
   const [staffId, setStaffId] = useState<string>('');
   const [leaveTypeId, setLeaveTypeId] = useState<LeaveTypeId>('sick');
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
-  const period: LeavePeriod = 'full';
-  const [skipWeekends, setSkipWeekends] = useState<boolean>(true);
+  const period: LeavePeriod = 'full'; // ลาเต็มวัน
+  const [skipWeekends, setSkipWeekends] = useState<boolean>(true); // ไม่นับรวมวันหยุดเสาร์-อาทิตย์และวันหยุดราชการ
   const [reason, setReason] = useState<string>('');
   const [status, setStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
 
-  // Initialize or reset form state
+  // รีเซ็ตหรือกำหนดค่าเริ่มต้นในฟอร์มเมื่อ Modal เปิด
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       if (initialRecord) {
+        // กรณีแก้ไขข้อมูลเดิม
         setStaffId(initialRecord.staffId);
         setLeaveTypeId(initialRecord.leaveTypeId);
         setStartDate(initialRecord.startDate);
@@ -49,6 +63,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
         setReason(initialRecord.reason);
         setStatus(initialRecord.status);
       } else {
+        // กรณีบันทึกข้อมูลใหม่
         setStaffId('');
         setLeaveTypeId('sick');
         const d = defaultDate || toDateString(new Date());
@@ -61,19 +76,19 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     }
   }, [isOpen, initialRecord, staffList, defaultDate]);
 
-  // Selected staff details and leave summaries
+  // คำนวณสรุปสถิติวันลาของบุคลากรทุกคนเพื่อนำมาตรวจสอบโควตา
   const staffSummaries = useMemo(() => {
     return calculateStaffSummaries(staffList, existingRecords);
   }, [staffList, existingRecords]);
 
+  // สรุปสถิติวันลาของบุคลากรที่เลือกในฟอร์มปัจจุบัน
   const currentSummary = useMemo(() => {
     return staffSummaries.find((s) => s.staff.id === staffId);
   }, [staffSummaries, staffId]);
 
-  // Remaining days for the selected leave type
+  // วันลาคงเหลือสำหรับประเภทการลาที่กำลังเลือก (หากเป็นการแก้ไข ให้บวกคืนวันลาของใบลาเดิม)
   const remainingDays = useMemo(() => {
     if (!currentSummary) return 0;
-    // If editing existing record, add back the existing record days
     let extra = 0;
     if (initialRecord && initialRecord.staffId === staffId && initialRecord.leaveTypeId === leaveTypeId) {
       extra = initialRecord.daysCount;
@@ -81,17 +96,18 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     return (currentSummary.remainingByType[leaveTypeId] ?? 0) + extra;
   }, [currentSummary, leaveTypeId, initialRecord, staffId]);
 
-  // Calculate leave days & holiday breakdown
+  // คำนวณรายละเอียดวันลาจริง และวันหยุดนักขัตฤกษ์ที่ตกอยู่ในช่วงวันที่เลือก
   const breakdown = useMemo(() => {
     return getLeaveDaysBreakdown(startDate, endDate, period, skipWeekends);
   }, [startDate, endDate, period, skipWeekends]);
 
+  // จำนวนวันลาสุทธิที่คำนวณได้
   const calculatedDays = breakdown.calculatedDays;
 
-  // Check quota overflow
+  // ตรวจสอบว่าจำนวนวันลาที่ขอเกินโควตาสิทธิ์คงเหลือหรือไม่
   const isOverQuota = calculatedDays > remainingDays;
 
-  // Handle start date change
+  // เมื่อเปลี่ยนวันที่เริ่มลา หากวันที่สิ้นสุดน้อยกว่า ให้ปรับวันที่สิ้นสุดตามอัตโนมัติ
   const handleStartDateChange = (val: string) => {
     setStartDate(val);
     if (endDate < val) {
@@ -99,6 +115,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     }
   };
 
+  // ตรวจสอบความถูกต้องและส่งบันทึกข้อมูล
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffId) {
@@ -110,6 +127,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
       return;
     }
 
+    // กรณีขอลาเกินสิทธิ์ แสดงกล่องข้อความยืนยันก่อนบันทึก
     if (isOverQuota) {
       const confirmOver = window.confirm(
         `คำเตือน: จำนวนวันลาที่ขอ (${calculatedDays} วัน) เกินสิทธิ์คงเหลือ (${remainingDays} วัน)\nคุณยังคงต้องการบันทึกการลานี้หรือไม่?`
@@ -129,6 +147,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
       status,
     });
 
+    // แสดงเอฟเฟกต์พลุกระดาษ (Confetti) เพื่อความสวยงาม
     try {
       confetti({
         particleCount: 40,

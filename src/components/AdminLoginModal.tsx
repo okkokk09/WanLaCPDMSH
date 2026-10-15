@@ -2,18 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Lock, X, AlertCircle } from 'lucide-react';
 import { verifyAdminPassword } from '../utils/storage';
 
+/**
+ * โครงสร้าง Props ของหน้าต่าง Modal เข้าสู่ระบบผู้ดูแลระบบ (AdminLoginModal)
+ */
 interface AdminLoginModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  isOpen: boolean;        // สถานะเปิด/ปิด Modal
+  onClose: () => void;    // ฟังก์ชันปิด Modal
+  onSuccess: () => void;  // Callback เมื่อยืนยันรหัสผ่านถูกต้อง
 }
 
+/**
+ * คอมโพเนนต์หน้าต่าง Modal เข้าสู่ระบบผู้ดูแลระบบ (AdminLoginModal)
+ * ตรวจสอบรหัสผ่านผู้ดูแลระบบ (ค่าเริ่มต้น 'admin' หรือ '1234')
+ * เพื่อปลดล็อกสิทธิ์การบันทึก แก้ไข ลบข้อมูล และเข้าถึงเมนูจัดการ
+ */
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
 }) => {
+  // รหัสผ่านที่ผู้ใช้กรอก
   const [password, setPassword] = useState('');
+  // ข้อความแจ้งเตือนข้อผิดพลาด
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,6 +34,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
+  // จัดการการส่งฟอร์มยืนยันรหัสผ่าน
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) {
@@ -31,6 +42,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
+    // ตรวจสอบรหัสผ่านกับระบบบันทึก
     if (verifyAdminPassword(password.trim())) {
       setError(null);
       setPassword('');

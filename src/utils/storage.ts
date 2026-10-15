@@ -4,12 +4,21 @@ import * as XLSX from 'xlsx';
 import { toDateString, getFiscalYear, getCurrentFiscalYear } from './dateUtils';
 import { sendRecordsToStreamlit } from './streamlitBridge';
 
+/**
+ * คีย์สำหรับบันทึกข้อมูลลงใน localStorage ของเว็บเบราว์เซอร์
+ */
 const STORAGE_KEYS = {
-  STAFF: 'leave_system_staff_v5',
-  RECORDS: 'leave_system_records_v5',
+  STAFF: 'leave_system_staff_v5',     // คีย์เก็บข้อมูลรายชื่อบุคลากรและโควตาวันลา
+  RECORDS: 'leave_system_records_v5', // คีย์เก็บรายการประวัติการลาทั้งหมด
 };
 
-// Helper: Check if staff is civil servant or permanent employee
+/**
+ * ฟังก์ชันตรวจสอบว่าตำแหน่งของบุคลากรเป็น "ข้าราชการ" หรือ "ลูกจ้างประจำ" หรือไม่
+ * ใช้พิจารณาเงื่อนไขการให้สิทธิ์วันลาตามระเบียบข้าราชการ (ลาป่วย 60 วัน, ลากิจ 45 วัน)
+ * เทียบกับ พนักงานราชการ / จ้างเหมาบริการ (ลาป่วย 30 วัน, ลากิจ 15 วัน)
+ * @param position ชื่อตำแหน่ง
+ * @returns true หากเป็นข้าราชการ/ลูกจ้างประจำ, false หากเป็นพนักงานราชการหรือจ้างเหมา
+ */
 export function isCivilServant(position: string): boolean {
   if (!position) return false;
   const p = position.toLowerCase();
@@ -25,7 +34,13 @@ export function isCivilServant(position: string): boolean {
   );
 }
 
-// Generate official leave quotas per government regulations
+/**
+ * คำนวณโควตาวันลามาตรฐานตามระเบียบทางราชการสำหรับแต่ละตำแหน่ง
+ * - ข้าราชการ: ลาป่วย 60 วันทำการ, ลากิจ 45 วันทำการ, ลาพักผ่อน 10 วันทำการ, ลาคลอด 90 วัน
+ * - พนักงานราชการ / จ้างเหมา: ลาป่วย 30 วันทำการ, ลากิจ 15 วันทำการ, ลาพักผ่อน 10 วันทำการ, ลาคลอด 90 วัน
+ * @param position ชื่อตำแหน่งงาน
+ * @returns ออบเจกต์ Record<leaveTypeId, จำนวนวันโควตา>
+ */
 export function getOfficialQuotasForPosition(position: string): Record<string, number> {
   const quotas: Record<string, number> = {};
   LEAVE_TYPES.forEach((t) => {
@@ -40,7 +55,7 @@ export function getOfficialQuotasForPosition(position: string): Record<string, n
     quotas['vacation'] = 10; // ลาพักผ่อน 10 วันทำการ
     quotas['maternity'] = 90; // ลาคลอดบุตร 90 วัน
   } else {
-    // ประกาศ คพร. สิทธิประโยชน์ของพนักงานราชการ และเทียบเคียงพนักงานจ้างเหมา
+    // ประกาศ คพร. เรื่อง สิทธิประโยชน์ของพนักงานราชการ และเทียบเคียงพนักงานจ้างเหมา
     quotas['sick'] = 30; // ลาป่วย 30 วันทำการ
     quotas['business'] = 15; // ลากิจส่วนตัว 15 วันทำการ
     quotas['vacation'] = 10; // ลาพักผ่อน 10 วันทำการ
@@ -50,7 +65,11 @@ export function getOfficialQuotasForPosition(position: string): Record<string, n
   return quotas;
 }
 
-// Initial default quotas generator
+/**
+ * สร้างโควตาวันลาเริ่มต้นสำหรับบุคลากร หากระบุตำแหน่งจะใช้โควตาตามระเบียบตำแหน่งนั้น
+ * @param position ตำแหน่งงาน (ถ้ามี)
+ * @returns ออบเจกต์โควตาวันลา
+ */
 export function getDefaultQuotas(position?: string): Record<string, number> {
   if (position) {
     return getOfficialQuotasForPosition(position);
@@ -396,11 +415,17 @@ export const INITIAL_STAFF: Staff[] = [
     department: 'กลุ่มส่งเสริมสหกรณ์ 4',
     quotas: getDefaultQuotas(),
   },
+/**
+ * กำหนดค่าเริ่มต้นของรายการบุคลากร พร้อมคำนวณโควตาวันลาเริ่มต้นตามประเภทตำแหน่ง
+ */
 ].map((s) => ({
   ...s,
   quotas: getOfficialQuotasForPosition(s.position),
 }));
 
+/**
+ * ตัวอย่างข้อมูลประวัติการลาเริ่มต้นสำหรับการแสดงผลครั้งแรกของระบบ
+ */
 export const INITIAL_RECORDS: LeaveRecord[] = [
   {
     id: 'rec-1789358900001',
@@ -430,6 +455,14 @@ export const INITIAL_RECORDS: LeaveRecord[] = [
   },
 ];
 
+/**
+ * โหลดรายชื่อบุคลากรทั้งหมดจาก localStorage
+ * มีระบบตรวจสอบและปรับปรุงข้อมูลอัตโนมัติ (Data Migration / Self-healing):
+ * - แปลงโควตาเป็นจำนวนเต็มบวก
+ * - หากโควตาเป็น 0 หรือว่าง จะอัปเกรดเป็นโควตาราชการตามตำแหน่งทันที
+ * - ควบคุมวันลาพักผ่อนสะสมยกมา (carriedOverVacationDays) ให้อยู่ในช่วง 0-10 วัน ไม่ให้เกิดข้อผิดพลาดสะสมทบเกินจริง
+ * @returns รายชื่อบุคลากร Staff[]
+ */
 export function getStaffList(): Staff[] {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.STAFF);
@@ -448,7 +481,7 @@ export function getStaffList(): Staff[] {
         totalQuota += val;
       });
 
-      // If staff has no quotas or total quota is 0 (legacy data before fiscal year update), upgrade to official regulations
+      // หากบุคลากรไม่มีโควตา หรือโควตารวมเป็น 0 ให้อัปเกรดเป็นโควตาตามระเบียบข้าราชการทันที
       let finalQuotas = integerQuotas;
       if (totalQuota === 0) {
         finalQuotas = getOfficialQuotasForPosition(s.position);
@@ -459,7 +492,7 @@ export function getStaffList(): Staff[] {
         s.id === 'staff-1' || s.position.includes('สหกรณ์จังหวัดแม่ฮ่องสอน')
           ? 'สหกรณ์จังหวัด'
           : s.department;
-      // If carriedOverVacationDays was inflated beyond 10 days by multiple clicks, auto-correct to max 10
+      // ป้องกันปัญหาวันลาสะสมยกมาเกิน 10 วันจากการกดปุ่มซ้ำ
       const safeCarriedOver = Math.min(10, Math.max(0, s.carriedOverVacationDays || 0));
       if (safeCarriedOver !== (s.carriedOverVacationDays || 0)) {
         upgradedAny = true;
@@ -483,6 +516,10 @@ export function getStaffList(): Staff[] {
   }
 }
 
+/**
+ * บันทึกรายชื่อบุคลากรลงใน localStorage
+ * @param staffList รายชื่อบุคลากรทั้งหมด
+ */
 export function saveStaffList(staffList: Staff[]): void {
   try {
     localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staffList));
@@ -491,6 +528,11 @@ export function saveStaffList(staffList: Staff[]): void {
   }
 }
 
+/**
+ * ดึงรายการประวัติการลาทั้งหมดจาก localStorage
+ * หากไม่มีข้อมูลหรือเป็นอาร์เรย์ว่าง จะใช้ค่า INITIAL_RECORDS
+ * @returns รายการ LeaveRecord[]
+ */
 export function getLeaveRecords(): LeaveRecord[] {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.RECORDS);
@@ -499,7 +541,7 @@ export function getLeaveRecords(): LeaveRecord[] {
       return INITIAL_RECORDS;
     }
     const parsed: LeaveRecord[] = JSON.parse(data);
-    // If local storage is empty array but INITIAL_RECORDS has default items, use INITIAL_RECORDS
+    // กรณีที่ localStorage เป็นอาร์เรย์ว่าง ให้ใช้ค่าเริ่มต้น
     if (Array.isArray(parsed) && parsed.length === 0 && INITIAL_RECORDS.length > 0) {
       saveLeaveRecords(INITIAL_RECORDS, false);
       return INITIAL_RECORDS;
@@ -511,6 +553,12 @@ export function getLeaveRecords(): LeaveRecord[] {
   }
 }
 
+/**
+ * บันทึกรายการประวัติการลาลงใน localStorage พร้อมส่งสัญญาณ postMessage ไปยัง Streamlit Backend
+ * เพื่อสั่งบันทึกลงไฟล์ records.json และ Auto-commit ขึ้น GitHub ทันที
+ * @param records รายการประวัติการลาทั้งหมด
+ * @param notifyStreamlit ส่งข้อมูลอัปเดตไปยัง Streamlit หรือไม่ (ค่าเริ่มต้น true)
+ */
 export function saveLeaveRecords(records: LeaveRecord[], notifyStreamlit = true): void {
   try {
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
@@ -522,6 +570,11 @@ export function saveLeaveRecords(records: LeaveRecord[], notifyStreamlit = true)
   }
 }
 
+/**
+ * ดึงข้อมูลประวัติการลาล่าสุดจาก GitHub Repository (records.json)
+ * เพื่อให้แน่ใจว่าอุปกรณ์ทุกเครื่องได้รับข้อมูลที่เป็นปัจจุบันและตรงกัน
+ * @returns รายการ LeaveRecord[] ล่าสุด หรือ null หากดึงข้อมูลไม่สำเร็จ
+ */
 export async function syncRecordsFromGitHub(): Promise<LeaveRecord[] | null> {
   try {
     let res = await fetch('./records.json?t=' + Date.now()).catch(() => null);
@@ -544,12 +597,24 @@ export async function syncRecordsFromGitHub(): Promise<LeaveRecord[] | null> {
   return null;
 }
 
+/**
+ * ล้างข้อมูลและรีเซ็ตระบบกลับเป็นค่าเริ่มต้นทั้งหมด (Factory Reset)
+ */
 export function resetAllData(): void {
   localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(INITIAL_STAFF));
   localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(INITIAL_RECORDS));
 }
 
-// Calculate summary per staff member (supports filtering by fiscal year, default current fiscal year 2570)
+/**
+ * คำนวณสรุปสถิติวันลาของบุคลากรทุกคน โดยรองรับการกรองตามปีงบประมาณ
+ * - คำนวณวันลาที่ใช้ไปแยกตามประเภทการลา (sick, business, vacation, maternity)
+ * - คำนวณโควตารวมโดยบวกวันลาพักผ่อนสะสมยกมา (carriedOverVacationDays) เข้ากับโควตาพักผ่อนประจำปี
+ * - คำนวณวันลาคงเหลือ
+ * @param staffList รายชื่อบุคลากร
+ * @param records ประวัติการลาทั้งหมด
+ * @param fiscalYear ปีงบประมาณ พ.ศ. ที่ต้องการคำนวณ หรือ 'all' (ค่าเริ่มต้น: ปีงบประมาณปัจจุบัน 2570)
+ * @returns อาร์เรย์ StaffLeaveSummary[]
+ */
 export function calculateStaffSummaries(
   staffList: Staff[],
   records: LeaveRecord[],
@@ -608,7 +673,18 @@ export function calculateStaffSummaries(
   });
 }
 
-// Rollover / upgrade all staff quotas for a new fiscal year according to regulations
+/**
+ * ฟังก์ชันปรับรอบปีงบประมาณใหม่ (Rollover Fiscal Year) ตามระเบียบราชการ:
+ * 1. คำนวณวันลาพักผ่อนที่ใช้ไปจริงในปีงบประมาณก่อนหน้า
+ * 2. คำนวณวันลาพักผ่อนที่เหลือยกมาสะสม (สูงสุดไม่เกิน 10 วันทำการ ตามระเบียบ)
+ * 3. เติมโควตาวันลาใหม่เต็มจำนวนตามตำแหน่งงานสำหรับปีงบประมาณใหม่
+ * 4. การทำงานเป็นแบบ Idempotent: กดซ้ำกี่ครั้งก็จะไม่สะสมเบิ้ลหรือเกิน 10 วัน
+ * @param staffList รายชื่อบุคลากร
+ * @param records ประวัติการลาทั้งหมด
+ * @param fromYear ปีงบประมาณเดิมที่ต้องการคำนวณวันลาพักผ่อนคงเหลือ (ค่าเริ่มต้น: ปีก่อนหน้า)
+ * @param _toYear ปีงบประมาณใหม่ (ค่าเริ่มต้น: ปีปัจจุบัน)
+ * @returns รายชื่อบุคลากรที่ได้รับการอัปเดต Staff[]
+ */
 export function rolloverFiscalYear(
   staffList: Staff[],
   records: LeaveRecord[],
@@ -616,7 +692,7 @@ export function rolloverFiscalYear(
   _toYear: number = getCurrentFiscalYear()
 ): Staff[] {
   const updatedStaffList: Staff[] = staffList.map((staff) => {
-    // Calculate actual vacation days used in the previous fiscal year from leave records
+    // คำนวณวันลาพักผ่อนที่ใช้ไปจริงในรอบปีงบประมาณก่อนหน้า
     const usedVacationInFromYear = records
       .filter(
         (r) =>
@@ -627,12 +703,11 @@ export function rolloverFiscalYear(
       )
       .reduce((sum, r) => sum + r.daysCount, 0);
 
-    // Standard annual vacation quota for previous year was 10 days
-    // Carried over days can NEVER exceed remaining days from standard 10 days (max 10 days)
-    // This is strictly idempotent: clicking multiple times will NOT inflate or compound the days
+    // โควตาวันลาพักผ่อนประจำปีมาตรฐานคือ 10 วันทำการ
+    // วันลาสะสมยกมาต้องไม่เกินวันที่เหลือ และไม่เกิน 10 วัน (Math.max(0, 10 - used))
     const carriedOver = Math.max(0, 10 - usedVacationInFromYear);
 
-    // Fresh official quotas for new fiscal year
+    // รับโควตามาตรฐานใหม่เต็มจำนวนตามตำแหน่ง
     const officialQuotas = getOfficialQuotasForPosition(staff.position);
 
     return {
@@ -646,7 +721,12 @@ export function rolloverFiscalYear(
   return updatedStaffList;
 }
 
-// Reset carried-over vacation days to 0 for all staff (revert carryover completely)
+/**
+ * ย้อนกลับ/ล้างวันลาพักผ่อนสะสมยกมา (carriedOverVacationDays) ของทุกคนให้เป็น 0
+ * ใช้สำหรับกรณีผู้ดูแลระบบเผลอกดปรับย้อนรอบปีงบประมาณ หรือต้องการรีเซ็ตวันลายกมา
+ * @param staffList รายชื่อบุคลากร
+ * @returns รายชื่อบุคลากรที่ถูกรีเซ็ต Staff[]
+ */
 export function resetCarriedOverVacationDays(staffList: Staff[]): Staff[] {
   const updatedStaffList: Staff[] = staffList.map((staff) => ({
     ...staff,
@@ -658,7 +738,9 @@ export function resetCarriedOverVacationDays(staffList: Staff[]): Staff[] {
   return updatedStaffList;
 }
 
-// Export all data to JSON
+/**
+ * ส่งออก (Export) ข้อมูลทั้งหมดของระบบ (บุคลากรและประวัติการลา) เป็นไฟล์ JSON สำหรับสำรองข้อมูล (Backup)
+ */
 export function exportDataToJson(): void {
   const data = {
     exportDate: new Date().toISOString(),
@@ -676,7 +758,11 @@ export function exportDataToJson(): void {
   URL.revokeObjectURL(url);
 }
 
-// Import all data from JSON string
+/**
+ * นำเข้า (Import) ข้อมูลระบบจากข้อความ JSON ที่ได้จากการสำรองข้อมูล
+ * @param jsonStr ข้อความ JSON
+ * @returns ออบเจกต์ผลลัพธ์ { success: boolean, message: string }
+ */
 export function importDataFromJson(jsonStr: string): { success: boolean; message: string } {
   try {
     const data = JSON.parse(jsonStr);
@@ -694,7 +780,10 @@ export function importDataFromJson(jsonStr: string): { success: boolean; message
   }
 }
 
-// Export staff balance summary to Excel
+/**
+ * ส่งออกรายงานสรุปวันลาคงเหลือของบุคลากรทุกคนเป็นไฟล์ Microsoft Excel (.xlsx)
+ * @param summaries รายการสรุปสถิติวันลา StaffLeaveSummary[]
+ */
 export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
   const headers = [
     'ชื่อ - นามสกุล',
@@ -735,7 +824,10 @@ export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
   XLSX.writeFile(wb, `สรุปวันลาคงเหลือ_${toDateString(new Date())}.xlsx`);
 }
 
-// Export staff balance summary to CSV (UTF-8 with BOM for Excel compatibility)
+/**
+ * ส่งออกรายงานสรุปวันลาคงเหลือเป็นไฟล์ CSV (เข้ารหัส UTF-8 พร้อม BOM เพื่อให้เปิดใน Excel ภาษาไทยไม่เพี้ยน)
+ * @param summaries รายการสรุปสถิติวันลา StaffLeaveSummary[]
+ */
 export function exportSummaryToCsv(summaries: StaffLeaveSummary[]): void {
   const headers = [
     'ชื่อ - นามสกุล',
@@ -769,6 +861,7 @@ export function exportSummaryToCsv(summaries: StaffLeaveSummary[]): void {
     return row.join(',');
   });
 
+  // ใส่ BOM (\uFEFF) หน้าข้อความ CSV เพื่อให้ Microsoft Excel แสดงผลภาษาไทยได้อย่างถูกต้อง
   const csvContent = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -779,7 +872,11 @@ export function exportSummaryToCsv(summaries: StaffLeaveSummary[]): void {
   URL.revokeObjectURL(url);
 }
 
-// Export leave records history to Excel
+/**
+ * ส่งออกประวัติการลาทั้งหมดเป็นไฟล์ Microsoft Excel (.xlsx)
+ * @param records รายการประวัติการลา
+ * @param staffList รายชื่อบุคลากร
+ */
 export function exportRecordsToExcel(records: LeaveRecord[], staffList: Staff[]): void {
   const staffMap = new Map(staffList.map((s) => [s.id, s]));
 
@@ -827,21 +924,31 @@ export function exportRecordsToExcel(records: LeaveRecord[], staffList: Staff[])
   XLSX.writeFile(wb, `ประวัติการลา_${toDateString(new Date())}.xlsx`);
 }
 
-// User Role & Admin Authentication Storage
+// -------------------------------------------------------------
+// ระบบจัดการสิทธิ์ผู้ใช้งานและการยืนยันตัวตน (Authentication & Roles)
+// -------------------------------------------------------------
 const ROLE_KEY = 'leave_system_user_role';
 const ADMIN_PASSWORD_KEY = 'leave_system_admin_password';
 const MY_STAFF_ID_KEY = 'leave_system_my_staff_id';
 
+/**
+ * ดึงบทบาทผู้ใช้งานปัจจุบัน (admin หรือ staff)
+ * ค่าเริ่มต้นคือ 'staff' (เจ้าหน้าที่ทั่วไป)
+ */
 export function getUserRole(): UserRole {
   try {
     const role = localStorage.getItem(ROLE_KEY);
     if (role === 'admin' || role === 'staff') return role;
-    return 'staff'; // Default to staff role
+    return 'staff';
   } catch {
     return 'staff';
   }
 }
 
+/**
+ * กำหนดบทบาทผู้ใช้งานปัจจุบันลงใน localStorage
+ * @param role บทบาท 'admin' หรือ 'staff'
+ */
 export function setUserRole(role: UserRole): void {
   try {
     localStorage.setItem(ROLE_KEY, role);
@@ -850,6 +957,9 @@ export function setUserRole(role: UserRole): void {
   }
 }
 
+/**
+ * ดึงรหัสผ่านผู้ดูแลระบบ (Admin) ค่าเริ่มต้นคือ 'admin'
+ */
 export function getAdminPassword(): string {
   try {
     return localStorage.getItem(ADMIN_PASSWORD_KEY) || 'admin';
@@ -858,6 +968,10 @@ export function getAdminPassword(): string {
   }
 }
 
+/**
+ * ตั้งค่ารหัสผ่านผู้ดูแลระบบใหม่
+ * @param password รหัสผ่านใหม่
+ */
 export function setAdminPassword(password: string): void {
   try {
     localStorage.setItem(ADMIN_PASSWORD_KEY, password);
@@ -866,12 +980,20 @@ export function setAdminPassword(password: string): void {
   }
 }
 
+/**
+ * ตรวจสอบความถูกต้องของรหัสผ่านผู้ดูแลระบบ
+ * รองรับรหัสผ่านที่ตั้งไว้, ค่าเริ่มต้น 'admin' หรือ '1234'
+ * @param password รหัสผ่านที่ผู้ใช้ป้อนเข้ามา
+ * @returns true ถ้ารหัสถูกต้อง, false ถ้าไม่ถูกต้อง
+ */
 export function verifyAdminPassword(password: string): boolean {
   const currentPassword = getAdminPassword();
-  // Allow configured password, default 'admin', or '1234'
   return password === currentPassword || password === 'admin' || password === '1234';
 }
 
+/**
+ * ดึงรหัสบุคลากรของตนเอง (My Staff ID) ที่เลือกจำไว้ในระบบ
+ */
 export function getMyStaffId(): string | null {
   try {
     return localStorage.getItem(MY_STAFF_ID_KEY) || null;
@@ -880,6 +1002,10 @@ export function getMyStaffId(): string | null {
   }
 }
 
+/**
+ * บันทึกรหัสบุคลากรของตนเอง (My Staff ID) เพื่อให้ระบบจำตัวบุคคลได้อัตโนมัติ
+ * @param staffId รหัสบุคลากร หรือ null หากต้องการล้างค่า
+ */
 export function setMyStaffId(staffId: string | null): void {
   try {
     if (staffId) {

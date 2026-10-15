@@ -13,16 +13,30 @@ import { LEAVE_TYPES, LEAVE_TYPE_MAP, WORK_GROUPS } from '../utils/constants';
 import { formatThaiDateShort, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
 import { exportRecordsToExcel } from '../utils/storage';
 
+/**
+ * โครงสร้าง Props ของหน้าจอประวัติการลา (LeaveRecordView)
+ */
 interface LeaveRecordViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  onOpenNewLeave: () => void;
-  onDeleteRecord: (recordId: string) => void;
-  selectedFiscalYear?: number | 'all';
-  availableFiscalYears?: number[];
-  onSelectFiscalYear?: (fy: number | 'all') => void;
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  onOpenNewLeave: () => void;                                 // ฟังก์ชันเปิด Modal บันทึกการลาใหม่
+  onDeleteRecord: (recordId: string) => void;                 // ฟังก์ชันลบรายการลา
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
 }
 
+/**
+ * คอมโพเนนต์หน้าจอแสดงและค้นหาประวัติการลาทั้งหมด (LeaveRecordView)
+ * ประกอบด้วย:
+ * - ตัวกรองปีงบประมาณ (Fiscal Year Switcher) เช่น ปีงบฯ 2569 / 2570 หรือดูทั้งหมด
+ * - ช่องค้นหาอัจฉริยะ (ค้นหาตามชื่อบุคลากร หรือเหตุผลการลา)
+ * - ตัวกรองประเภทการลา (ลาป่วย, ลากิจ, ลาพักผ่อน, ลาคลอด)
+ * - ตัวกรองกลุ่มงาน / ฝ่าย
+ * - ตัวกรองเฉพาะบุคคล
+ * - ปุ่มส่งออกข้อมูลเป็น Excel (.xlsx) ตามผลลัพธ์ที่กรอง
+ * - ตารางแสดงประวัติการลา พร้อมปุ่มลบรายการลา (สิทธิ์ Admin)
+ */
 export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   staffList,
   records,
@@ -32,17 +46,21 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
+  // สถานะช่องค้นหาและตัวกรองต่างๆ
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
   const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>('all');
 
+  // ปีงบประมาณที่ใช้งานจริง (ใช้ค่าจาก Props หากมี มิฉะนั้นใช้ Local State)
   const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
+  // จัดการการเปลี่ยนปีงบประมาณ
   const handleFiscalYearChange = (fy: number | 'all') => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
@@ -51,14 +69,15 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
     }
   };
 
+  // แผนผัง Map เพื่อค้นหาข้อมูลบุคลากรจาก staffId ได้อย่างรวดเร็ว (O(1))
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
 
-  // Unique departments for filter
+  // รายชื่อกลุ่มงานทั้งหมดที่ไม่ซ้ำกันสำหรับแสดงใน Dropdown
   const departments = useMemo(() => {
     return Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
   }, [staffList]);
 
-  // Filtered list of records
+  // กรองรายการประวัติการลาตามเงื่อนไขที่เลือกทั้งหมด
   const filteredRecords = useMemo(() => {
     return records
       .filter((r) => {
@@ -67,36 +86,38 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         const reason = r.reason?.toLowerCase() || '';
         const query = searchQuery.toLowerCase().trim();
 
-        // Fiscal year filter
+        // 1. กรองตามปีงบประมาณ (คำนวณจากวันที่เริ่มลา startDate)
         if (activeFiscalYear !== 'all' && getFiscalYear(r.startDate) !== activeFiscalYear) {
           return false;
         }
 
-        // Search query
+        // 2. กรองตามคำค้นหา (ชื่อบุคลากร หรือเหตุผลการลา)
         if (query && !staffName.includes(query) && !reason.includes(query)) {
           return false;
         }
 
-        // Leave type filter
+        // 3. กรองตามประเภทการลา
         if (selectedType !== 'all' && r.leaveTypeId !== selectedType) {
           return false;
         }
 
-        // Department filter
+        // 4. กรองตามกลุ่มงาน / ฝ่าย
         if (selectedDept !== 'all' && staff?.department !== selectedDept) {
           return false;
         }
 
-        // Staff filter
+        // 5. กรองตามรายบุคคล
         if (selectedStaffId !== 'all' && r.staffId !== selectedStaffId) {
           return false;
         }
 
         return true;
       })
+      // จัดเรียงตามวันที่เริ่มลาจากใหม่ไปเก่า (ล่าสุดขึ้นก่อน)
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
   }, [records, staffMap, searchQuery, selectedType, selectedDept, selectedStaffId, activeFiscalYear]);
 
+  // คำนวณผลรวมจำนวนวันลาของรายการที่กรองได้
   const totalFilteredDays = useMemo(() => {
     return filteredRecords.reduce((sum, r) => sum + r.daysCount, 0);
   }, [filteredRecords]);

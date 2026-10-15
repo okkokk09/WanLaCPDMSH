@@ -25,39 +25,53 @@ import {
 import { initStreamlitBridge, setStreamlitFrameHeight } from './utils/streamlitBridge';
 import { getCurrentFiscalYear, getAvailableFiscalYears } from './utils/dateUtils';
 
+/**
+ * คอมโพเนนต์หลักของระบบ (App Component)
+ * ทำหน้าที่บริหารจัดการ State ส่วนกลางของแอปพลิเคชัน:
+ * - สิทธิ์ผู้ใช้งาน (UserRole: 'admin' หรือ 'staff')
+ * - ปีงบประมาณที่เลือกแสดงผล (Fiscal Year: พ.ศ. 2570, 2569, หรือ 'all')
+ * - แท็บเมนูที่กำลังเปิด (ActiveTab)
+ * - รายชื่อบุคลากร (StaffList) และประวัติการลา (Records)
+ * - ธีมสี (Light / Dark Mode)
+ * - การเชื่อมต่อรับส่งข้อมูลกับ Streamlit Backend & GitHub Sync
+ */
 export const App: React.FC = () => {
-  // User role state ('admin' | 'staff')
+  // สถานะสิทธิ์ผู้ใช้งาน ('admin' | 'staff')
   const [userRole, setUserRoleState] = useState<UserRole>(() => getUserRole());
+  // รหัสบุคลากรของตนเอง (สำหรับกรองแสดงข้อมูลเฉพาะบุคคล)
   const [myStaffId, setMyStaffIdState] = useState<string | null>(null);
+  // สถานะเปิด/ปิด Modal เข้าสู่ระบบผู้ดูแลระบบ
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
-  // Fiscal year state (Buddhist Era, e.g. 2570, 2569, or 'all')
+  // สถานะปีงบประมาณ พ.ศ. (เช่น 2570, 2569 หรือ 'all' สำหรับดูทั้งหมด)
   const currentFiscalYear = getCurrentFiscalYear();
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | 'all'>(currentFiscalYear);
 
-  // Active tab state - default based on role
+  // แท็บเมนูเริ่มต้น: หากเป็นแอดมินเปิดหน้าภาพรวม (Dashboard), หากเป็นเจ้าหน้าที่เปิดหน้าปฏิทิน (Calendar)
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
     const role = getUserRole();
     return role === 'admin' ? 'dashboard' : 'calendar';
   });
 
+  // ข้อมูลบุคลากรและประวัติการลาทั้งหมด
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [records, setRecords] = useState<LeaveRecord[]>([]);
 
-  // Dynamically calculate available fiscal years from records
+  // คำนวณรายการปีงบประมาณที่มีข้อมูลจริงในระบบแบบไดนามิก (สำหรับ Dropdown สลับปีงบประมาณ)
   const availableFiscalYears = useMemo(() => {
     return getAvailableFiscalYears(records);
   }, [records]);
 
-  // Modals state
+  // สถานะสำหรับหน้าต่างป็อปอัป (Modal) บันทึกการลา
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<LeaveRecord | null>(null);
   const [defaultLeaveDate, setDefaultLeaveDate] = useState<string | undefined>(undefined);
 
+  // สถานะสำหรับหน้าต่างป็อปอัปจัดการข้อมูลบุคลากร
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
 
-  // Theme state ('light' | 'dark')
+  // สถานะธีมสีระบบ ('light' หรือ 'dark')
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       const saved = localStorage.getItem('leave_system_theme');
@@ -70,6 +84,7 @@ export const App: React.FC = () => {
     }
   });
 
+  // ซิงก์คลาส dark เข้ากับ document.documentElement เมื่อสลับธีม
   useEffect(() => {
     try {
       if (theme === 'dark') {
@@ -79,31 +94,33 @@ export const App: React.FC = () => {
       }
       localStorage.setItem('leave_system_theme', theme);
     } catch {
-      // safe fallback
+      // ดักจับข้อผิดพลาดกรณีเบราว์เซอร์ไม่อนุญาตเข้าถึง localStorage
     }
   }, [theme]);
 
+  // ฟังก์ชันสลับธีมสี
   const handleToggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Load initial data from localStorage
+  // โหลดข้อมูลบุคลากรและประวัติการลาเริ่มต้นจาก localStorage
   const loadData = () => {
     const loadedStaff = getStaffList();
     setStaffList(loadedStaff);
     setRecords(getLeaveRecords());
 
-    // If myStaffId is set but no longer exists in staffList, clean it
+    // ตรวจสอบความถูกต้องของ myStaffId หากไม่มีในรายชื่อแล้วให้ล้างค่าออก
     const currentMyId = getMyStaffId();
     if (currentMyId && !loadedStaff.some((s) => s.id === currentMyId)) {
       setMyStaffIdState(null);
     }
   };
 
+  // ดำเนินการเมื่อ Component โหลดครั้งแรก (Mount)
   useEffect(() => {
     loadData();
 
-    // Initialize Streamlit Bridge for bidirectional communication
+    // เริ่มต้นเชื่อมต่อ Streamlit Bridge สำหรับรับข้อมูลใหม่เมื่อ Streamlit สั่ง Render
     const cleanupStreamlit = initStreamlitBridge((args) => {
       if (args.records && Array.isArray(args.records)) {
         setRecords(args.records);
@@ -111,7 +128,7 @@ export const App: React.FC = () => {
       }
     });
 
-    // Background sync from GitHub raw content
+    // ดึงข้อมูลประวัติการลาล่าสุดจาก GitHub Repository ในพื้นหลัง
     syncRecordsFromGitHub().then((synced) => {
       if (synced && synced.length > 0) {
         setRecords(synced);
@@ -123,7 +140,7 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Dynamically update Streamlit iframe frame height
+  // ปรับความสูงของ Streamlit iframe อัตโนมัติเมื่อเนื้อหาหรือแท็บเปลี่ยนแปลง
   useEffect(() => {
     const timer = setTimeout(() => {
       setStreamlitFrameHeight();
@@ -131,7 +148,7 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [activeTab, records, staffList]);
 
-  // Enforce role-based tab access
+  // ตรวจสอบความปลอดภัยตามสิทธิ์: หากเป็นเจ้าหน้าที่ทั่วไปไม่อนุญาตให้เปิดแท็บของผู้ดูแลระบบ
   useEffect(() => {
     if (userRole === 'staff') {
       if (activeTab !== 'calendar' && activeTab !== 'my-leave') {
@@ -140,13 +157,14 @@ export const App: React.FC = () => {
     }
   }, [userRole, activeTab]);
 
-  // Role switching handlers
+  // ตัวจัดการการเลือกบุคลากร (สำหรับกรองแสดงข้อมูลเฉพาะคน)
   const handleSelectStaff = (staffId: string) => {
     const nextId = staffId && staffId !== 'all' ? staffId : null;
     setMyStaffIdState(nextId);
     setMyStaffId(nextId);
   };
 
+  // สลับไปยังโหมดเจ้าหน้าที่ทั่วไป (Staff Role)
   const handleSwitchToStaff = () => {
     setUserRoleState('staff');
     setUserRole('staff');
@@ -154,13 +172,17 @@ export const App: React.FC = () => {
     setActiveTab('calendar');
   };
 
+  // เมื่อเข้าสู่ระบบผู้ดูแลระบบสำเร็จ (Admin Login Success)
   const handleAdminLoginSuccess = () => {
     setUserRoleState('admin');
     setUserRole('admin');
     setActiveTab('dashboard');
   };
 
-  // Leave Record Handlers (Admin only)
+  // -------------------------------------------------------------
+  // ฟังก์ชันจัดการรายการลา (Leave Record Handlers - สิทธิ์ Admin)
+  // -------------------------------------------------------------
+  // เปิดฟอร์มบันทึกการลาใหม่
   const handleOpenNewLeave = () => {
     if (userRole !== 'admin') return;
     setEditingRecord(null);
@@ -168,6 +190,7 @@ export const App: React.FC = () => {
     setIsLeaveModalOpen(true);
   };
 
+  // เปิดฟอร์มบันทึกการลาใหม่โดยระบุวันที่ล่วงหน้าจากการคลิกบนปฏิทิน
   const handleOpenNewLeaveOnDate = (dateStr: string) => {
     if (userRole !== 'admin') return;
     setEditingRecord(null);
@@ -175,6 +198,7 @@ export const App: React.FC = () => {
     setIsLeaveModalOpen(true);
   };
 
+  // บันทึกรายการลา (เพิ่มใหม่หรือแก้ไขรายการเดิม)
   const handleSaveLeaveRecord = (data: Omit<LeaveRecord, 'id' | 'createdAt'>) => {
     if (userRole !== 'admin') return;
     let updated: LeaveRecord[];
@@ -194,6 +218,7 @@ export const App: React.FC = () => {
     setRecords(updated);
   };
 
+  // ลบรายการลา
   const handleDeleteLeaveRecord = (recordId: string) => {
     if (userRole !== 'admin') return;
     const updated = records.filter((r) => r.id !== recordId);
@@ -201,19 +226,24 @@ export const App: React.FC = () => {
     setRecords(updated);
   };
 
-  // Staff Handlers (Admin only)
+  // -------------------------------------------------------------
+  // ฟังก์ชันจัดการบุคลากร (Staff Handlers - สิทธิ์ Admin)
+  // -------------------------------------------------------------
+  // เปิดฟอร์มเพิ่มบุคลากรใหม่
   const handleOpenNewStaff = () => {
     if (userRole !== 'admin') return;
     setEditingStaff(null);
     setIsStaffModalOpen(true);
   };
 
+  // เปิดฟอร์มแก้ไขข้อมูลบุคลากร
   const handleEditStaff = (staff: Staff) => {
     if (userRole !== 'admin') return;
     setEditingStaff(staff);
     setIsStaffModalOpen(true);
   };
 
+  // บันทึกข้อมูลบุคลากร (เพิ่มใหม่หรือแก้ไข)
   const handleSaveStaff = (staffData: Staff) => {
     if (userRole !== 'admin') return;
     let updated: Staff[];
@@ -227,6 +257,7 @@ export const App: React.FC = () => {
     setStaffList(updated);
   };
 
+  // ลบบุคลากรออกจากระบบ (รวมถึงลบประวัติการลาของบุคลากรท่านนั้นด้วย)
   const handleDeleteStaff = (staffId: string) => {
     if (userRole !== 'admin') return;
     const updatedStaff = staffList.filter((s) => s.id !== staffId);

@@ -4,20 +4,32 @@ import type { Staff } from '../types';
 import { LEAVE_TYPES, DEPARTMENTS } from '../utils/constants';
 import { getOfficialQuotasForPosition } from '../utils/storage';
 
+/**
+ * โครงสร้าง Props ของหน้าต่าง Modal เพิ่ม/แก้ไขข้อมูลบุคลากร (StaffModal)
+ */
 interface StaffModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (staff: Staff) => void;
-  initialStaff?: Staff | null;
-  existingStaffList: Staff[];
+  isOpen: boolean;                    // สถานะเปิด/ปิด Modal
+  onClose: () => void;                // ฟังก์ชันปิด Modal
+  onSave: (staff: Staff) => void;     // ฟังก์ชันบันทึกข้อมูลบุคลากร
+  initialStaff?: Staff | null;        // ข้อมูลบุคลากรเดิม (กรณีแก้ไข)
+  existingStaffList: Staff[];         // รายชื่อบุคลากรทั้งหมด
 }
 
+/**
+ * คอมโพเนนต์หน้าต่าง Modal จัดการข้อมูลบุคลากร (StaffModal)
+ * ฟังก์ชันหลัก:
+ * - กรอกชื่อ-นามสกุล, ตำแหน่ง, และสังกัดกลุ่มงาน
+ * - กำหนดโควตาวันลาประจำปี (ลาป่วย, ลากิจ, ลาพักผ่อน, ลาคลอด)
+ * - กำหนดวันลาพักผ่อนสะสมยกมา (carriedOverVacationDays)
+ * - บันทึกหมายเหตุเพิ่มเติม
+ */
 export const StaffModal: React.FC<StaffModalProps> = ({
   isOpen,
   onClose,
   onSave,
   initialStaff,
 }) => {
+  // ฟิลด์ข้อมูลของบุคลากร
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
@@ -25,10 +37,12 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [carriedOverVacationDays, setCarriedOverVacationDays] = useState<number>(0);
   const [notes, setNotes] = useState('');
 
+  // กำหนดค่าเริ่มต้นในฟอร์มเมื่อเปิด Modal
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       if (initialStaff) {
+        // กรณีแก้ไขข้อมูลเดิม
         setName(initialStaff.name);
         setPosition(initialStaff.position);
         setDepartment(initialStaff.department);
@@ -40,6 +54,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         setCarriedOverVacationDays(initialStaff.carriedOverVacationDays || 0);
         setNotes(initialStaff.notes || '');
       } else {
+        // กรณีเพิ่มบุคลากรใหม่
         setName('');
         setPosition('');
         setDepartment(DEPARTMENTS[0]);
@@ -50,6 +65,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     }
   }, [isOpen, initialStaff]);
 
+  // จัดการเมื่อเปลี่ยนจำนวนวันโควตาในฟอร์ม
   const handleQuotaChange = (leaveTypeId: string, value: number) => {
     setQuotas((prev) => ({
       ...prev,

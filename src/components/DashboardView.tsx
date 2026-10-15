@@ -25,18 +25,30 @@ import {
 } from '../utils/dateUtils';
 import { exportSummaryToExcel, exportSummaryToCsv, calculateStaffSummaries } from '../utils/storage';
 
+/**
+ * โครงสร้าง Props ของหน้าจอภาพรวมแดชบอร์ด (DashboardView)
+ */
 interface DashboardViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  onOpenNewLeave: () => void;
-  onOpenNewStaff: () => void;
-  onNavigateTab: (tab: 'records' | 'calendar' | 'staff' | 'balance') => void;
-  onDeleteRecord: (recordId: string) => void;
-  selectedFiscalYear?: number | 'all';
-  availableFiscalYears?: number[];
-  onSelectFiscalYear?: (fy: number | 'all') => void;
+  staffList: Staff[];                                                           // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                                       // ประวัติการลาทั้งหมด
+  onOpenNewLeave: () => void;                                                   // เปิด Modal บันทึกการลาใหม่
+  onOpenNewStaff: () => void;                                                   // เปิด Modal เพิ่มบุคลากรใหม่
+  onNavigateTab: (tab: 'records' | 'calendar' | 'staff' | 'balance') => void;   // สลับไปยังแท็บอื่น
+  onDeleteRecord: (recordId: string) => void;                                   // ลบรายการลา
+  selectedFiscalYear?: number | 'all';                                         // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
+  availableFiscalYears?: number[];                                              // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;                            // ฟังก์ชันสลับปีงบประมาณ
 }
 
+/**
+ * คอมโพเนนต์หน้าจอแดชบอร์ดภาพรวมระบบ (DashboardView)
+ * ประกอบด้วย:
+ * - ตัวสลับปีงบประมาณ (Fiscal Year Switcher)
+ * - การ์ดตัวชี้วัดหลัก (Metric Cards): จำนวนบุคลากร, วันลาสะสมในปีงบประมาณ, วันลาในเดือนนี้, บุคลากรที่กำลังลาวันนี้
+ * - รายชื่อบุคลากรที่ลาปฏิบัติงานวันนี้ (Today's Leaves)
+ * - ประวัติการลาล่าสุด 5 รายการ (Recent Leaves) พร้อมปุ่มลบรายการ
+ * - เมนูด่วนสำหรับส่งออกรายงานเป็น Excel / CSV
+ */
 export const DashboardView: React.FC<DashboardViewProps> = ({
   staffList,
   records,
@@ -48,15 +60,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear,
 }) => {
+  // วันที่ปัจจุบันในรูปแบบ "YYYY-MM-DD"
   const todayStr = useMemo(() => toDateString(new Date()), []);
+  // แผนผัง Map ค้นหาข้อมูลบุคลากรจาก staffId (O(1))
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
+  
+  // ปีงบประมาณที่เลือก
   const currentFiscalYear = getCurrentFiscalYear();
   const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : currentFiscalYear;
+  // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
-  // People on leave today
+  // คำนวณรายชื่อบุคลากรที่ลาปฏิบัติงานในวันนี้ (เปรียบเทียบกับช่วงวันที่เริ่ม-สิ้นสุดลา)
   const leavesToday = useMemo(() => {
     return records
       .filter((r) => r.status !== 'rejected' && isDateInLeaveRange(todayStr, r))
@@ -67,7 +84,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }));
   }, [records, todayStr, staffMap]);
 
-  // Leave records in selected fiscal year
+  // กรองรายการลาที่อยู่ในปีงบประมาณที่เลือก
   const recordsInFY = useMemo(() => {
     return records.filter(
       (r) =>
@@ -76,12 +93,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   }, [records, activeFiscalYear]);
 
+  // ผลรวมจำนวนวันลาทั้งหมดในปีงบประมาณที่เลือก
   const totalDaysInFY = useMemo(() => {
     return recordsInFY.reduce((sum, r) => sum + r.daysCount, 0);
   }, [recordsInFY]);
 
-  // Current month leave records
-  const currentMonthPrefix = todayStr.substring(0, 7); // "YYYY-MM"
+  // กรองรายการลาที่อยู่ในเดือนปัจจุบัน
+  const currentMonthPrefix = todayStr.substring(0, 7); // รูปแบบ "YYYY-MM"
   const recordsThisMonth = useMemo(() => {
     return records.filter(
       (r) =>
@@ -90,11 +108,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   }, [records, currentMonthPrefix]);
 
+  // ผลรวมจำนวนวันลาในเดือนปัจจุบัน
   const totalDaysThisMonth = useMemo(() => {
     return recordsThisMonth.reduce((sum, r) => sum + r.daysCount, 0);
   }, [recordsThisMonth]);
 
-  // Recent 5 leave records (filtered by fiscal year if selected)
+  // รายการบันทึกการลาล่าสุด 5 รายการ (จัดเรียงตามเวลาที่สร้างล่าสุด)
   const recentRecords = useMemo(() => {
     return [...records]
       .filter(
@@ -105,11 +124,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .slice(0, 5);
   }, [records, activeFiscalYear]);
 
-  // Staff leave summaries for quick export
+  // สรุปสถิติวันลาของบุคลากรสำหรับปุ่มส่งออก Excel / CSV
   const staffSummaries = useMemo(() => {
     return calculateStaffSummaries(staffList, records, activeFiscalYear);
   }, [staffList, records, activeFiscalYear]);
 
+  // สถานะเปิด/ปิดเมนู Dropdown ส่งออกรายงาน
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
   return (

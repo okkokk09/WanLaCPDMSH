@@ -13,14 +13,30 @@ import { WORK_GROUPS } from '../utils/constants';
 import { calculateStaffSummaries, exportSummaryToExcel, exportSummaryToCsv } from '../utils/storage';
 import { getFiscalYear, getCurrentFiscalYear } from '../utils/dateUtils';
 
+/**
+ * โครงสร้าง Props ของหน้าจอสรุปยอดวันลาคงเหลือ (LeaveBalanceView)
+ */
 interface LeaveBalanceViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  selectedFiscalYear?: number | 'all';
-  availableFiscalYears?: number[];
-  onSelectFiscalYear?: (fy: number | 'all') => void;
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
 }
 
+/**
+ * คอมโพเนนต์หน้าจอสรุปยอดวันลาคงเหลือและสถิติ (LeaveBalanceView)
+ * ประกอบด้วย:
+ * - ตัวกรองสลับปีงบประมาณ (Fiscal Year Switcher)
+ * - การ์ดสถิติภาพรวม: โควตารวมทั้งหมด, วันลาที่ใช้ไปรวม, วันลาคงเหลือรวม
+ * - ตารางตรวจสอบสิทธิ์วันลาของบุคลากรทุกคน แยกประเภทการลาอย่างละเอียด:
+ *   - วันลาพักผ่อนสะสมยกมา (carriedOverVacationDays)
+ *   - ลาป่วย (ใช้ / โควตา / คงเหลือ)
+ *   - ลากิจส่วนตัว (ใช้ / โควตา / คงเหลือ)
+ *   - ลาพักผ่อน (ใช้ / โควตา / คงเหลือ)
+ *   - ลาคลอดบุตร (ใช้ / โควตา / คงเหลือ)
+ * - ปุ่มพิมพ์รายงาน (Print Friendly) และปุ่มส่งออกข้อมูลเป็น Excel (.xlsx) และ CSV (UTF-8 BOM)
+ */
 export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   staffList,
   records,
@@ -28,10 +44,13 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
+  // ปีงบประมาณปัจจุบัน
   const currentFY = getCurrentFiscalYear();
   const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFY);
+  // ปีงบประมาณที่ใช้งานจริง
   const selectedFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
 
+  // จัดการการเปลี่ยนปีงบประมาณ
   const handleFiscalYearChange = (fy: number | 'all') => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
@@ -39,10 +58,13 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
       setLocalFiscalYear(fy);
     }
   };
+
+  // ช่องค้นหาชื่อบุคลากรหรือตำแหน่ง
   const [searchQuery, setSearchQuery] = useState('');
+  // ตัวกรองกลุ่มงาน / ฝ่าย
   const [selectedDept, setSelectedDept] = useState<string>('all');
 
-  // Available fiscal years
+  // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const fiscalYears = useMemo(() => {
     if (availableFiscalYearsProp) return availableFiscalYearsProp;
     const years = new Set<number>();
@@ -54,17 +76,17 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
     return Array.from(years).sort((a, b) => b - a);
   }, [records, currentFY, availableFiscalYearsProp]);
 
-  // Calculate summaries for all staff based on selected fiscal year
+  // คำนวณสรุปสถิติวันลาของบุคลากรทุกคนตามปีงบประมาณที่เลือก
   const summaries = useMemo(() => {
     return calculateStaffSummaries(staffList, records, selectedFiscalYear);
   }, [staffList, records, selectedFiscalYear]);
 
-  // Unique departments for filter
+  // รายชื่อกลุ่มงานทั้งหมดที่ไม่ซ้ำกัน
   const departments = useMemo(() => {
     return Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
   }, [staffList]);
 
-  // Filtered summaries
+  // กรองสรุปสถิติวันลาตามคำค้นหาและกลุ่มงาน
   const filteredSummaries = useMemo(() => {
     return summaries.filter((s) => {
       const q = searchQuery.toLowerCase().trim();
@@ -80,7 +102,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
     });
   }, [summaries, searchQuery, selectedDept]);
 
-  // Overall statistics totals
+  // คำนวณยอดรวมสถิติทั้งองค์กร (โควตารวมทั้งหมด, วันลาที่ใช้รวม, คงเหลือรวม)
   const totals = useMemo(() => {
     let totalQuota = 0;
     let totalUsed = 0;

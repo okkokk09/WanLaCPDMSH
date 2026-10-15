@@ -22,16 +22,29 @@ import {
   formatThaiDateFull,
 } from '../utils/dateUtils';
 
+/**
+ * โครงสร้าง Props ของหน้าจอปฏิทินวันลา (CalendarView)
+ */
 interface CalendarViewProps {
-  staffList: Staff[];
-  records: LeaveRecord[];
-  onOpenNewLeaveOnDate?: (dateStr: string) => void;
-  onDeleteRecord?: (recordId: string) => void;
-  isAdmin?: boolean;
-  selectedStaffId?: string | null;
-  onSelectStaff?: (staffId: string) => void;
+  staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
+  records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  onOpenNewLeaveOnDate?: (dateStr: string) => void;           // ฟังก์ชันเปิด Modal บันทึกการลาใหม่โดยระบุวันที่ล่วงหน้า
+  onDeleteRecord?: (recordId: string) => void;                 // ฟังก์ชันลบรายการลา (สิทธิ์ Admin)
+  isAdmin?: boolean;                                          // เป็นผู้ดูแลระบบหรือไม่
+  selectedStaffId?: string | null;                            // รหัสบุคลากรที่เลือกกรองจากภายนอก
+  onSelectStaff?: (staffId: string) => void;                  // ฟังก์ชันแจ้งเตือนเมื่อเปลี่ยนการเลือกบุคลากร
 }
 
+/**
+ * คอมโพเนนต์ปฏิทินวันลาปฏิบัติงาน (CalendarView)
+ * ประกอบด้วย:
+ * - ปฏิทินแสดงผลรายเดือน พร้อมแปลงปี ค.ศ. เป็น พ.ศ. และชื่อเดือนภาษาไทย
+ * - แถบนำทางเดือน (เดือนก่อนหน้า, เดือนถัดไป, ปุ่มกระโดดกลับมา "วันนี้")
+ * - การแสดงวันหยุดนักขัตฤกษ์ราชการ พ.ศ. 2569–2570 พร้อมชื่อวันหยุด
+ * - การแสดงแท็ก/ชิปรายการลาของแต่ละคนแยกสีตามประเภทการลาและกลุ่มงาน
+ * - ตัวกรองกลุ่มงาน, ตัวกรองบุคลากร และช่องค้นหาชื่อ
+ * - หน้าต่างป็อปอัปแสดงรายละเอียดผู้ลาในวันที่คลิกเลือก (Date Detail Modal)
+ */
 export const CalendarView: React.FC<CalendarViewProps> = ({
   staffList,
   records,
@@ -42,18 +55,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onSelectStaff,
 }) => {
   const today = new Date();
+  // ปี ค.ศ. ปัจจุบันในปฏิทิน
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-11
+  // เดือนปัจจุบันในปฏิทิน (0 = มกราคม, 11 = ธันวาคม)
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  // ตัวกรองกลุ่มงาน
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  // ตัวกรองรหัสบุคลากร
   const [selectedStaffId, setSelectedStaffId] = useState<string>(
     propSelectedStaffId && propSelectedStaffId !== '' ? propSelectedStaffId : 'all'
   );
+  // คำค้นหาชื่อบุคลากร
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // วันที่ที่ถูกคลิกเพื่อดูรายละเอียดเชิงลึก (Modal Detail) ในรูปแบบ "YYYY-MM-DD"
   const [detailDate, setDetailDate] = useState<string | null>(null);
 
+  // แผนผัง Map ค้นหาข้อมูลบุคลากรตาม staffId (O(1))
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
 
-  // Sync with selectedStaffId prop from Navbar
+  // ซิงก์ค่า selectedStaffId กับ Prop ที่ส่งมาจากภายนอก (Navbar)
   useEffect(() => {
     const targetId = propSelectedStaffId && propSelectedStaffId !== '' ? propSelectedStaffId : 'all';
     setSelectedStaffId(targetId);
@@ -65,6 +85,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   }, [propSelectedStaffId, staffMap, selectedDept]);
 
+  // จัดการเมื่อผู้ใช้เลือกบุคลากรใน Dropdown
   const handleStaffChange = (newStaffId: string) => {
     setSelectedStaffId(newStaffId);
     if (onSelectStaff) {
@@ -72,7 +93,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-  // Navigate months
+  // เลื่อนไปเดือนก่อนหน้า
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
@@ -82,6 +103,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
+  // เลื่อนไปเดือนถัดไป
   const handleNextMonth = () => {
     if (currentMonth === 11) {
       setCurrentMonth(0);
@@ -91,13 +113,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
+  // กระโดดกลับมาดูเดือนและปีปัจจุบัน (วันนี้)
   const handleJumpToToday = () => {
     const n = new Date();
     setCurrentYear(n.getFullYear());
     setCurrentMonth(n.getMonth());
   };
 
-  // Filter records based on selected dept, staff and search query
+  // กรองรายการลาที่จะนำมาแสดงบนปฏิทินตามกลุ่มงาน, บุคลากร และคำค้นหา
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
       if (r.status === 'rejected') return false;
@@ -115,17 +138,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     });
   }, [records, staffMap, selectedDept, selectedStaffId, searchQuery]);
 
-  // Calendar cells
+  // คำนวณช่องตารางปฏิทิน 35-42 ช่อง (รวมวันของเดือนก่อนหน้าและเดือนถัดไป)
   const calendarCells = useMemo(() => {
     return getMonthCalendarCells(currentYear, currentMonth);
   }, [currentYear, currentMonth]);
 
-  // Unique departments for filter
+  // รายชื่อกลุ่มงานทั้งหมดที่ไม่ซ้ำกัน
   const departments = useMemo(() => {
     return Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
   }, [staffList]);
 
-  // Detailed records for the selected modal date
+  // รายการลาของวันที่ถูกคลิกเลือกใน Modal แสดงรายละเอียด
   const detailRecords = useMemo(() => {
     if (!detailDate) return [];
     return filteredRecords
@@ -137,6 +160,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       }));
   }, [detailDate, filteredRecords, staffMap]);
 
+  // ข้อมูลวันหยุดนักขัตฤกษ์ของวันที่ถูกคลิกเลือก (ถ้ามี)
   const detailHoliday = useMemo(() => {
     return detailDate ? getHolidayInfo(detailDate) : null;
   }, [detailDate]);
