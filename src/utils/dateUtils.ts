@@ -60,6 +60,29 @@ export function formatThaiDateFull(dateStr: string): string {
 }
 
 /**
+ * แยกส่วนประกอบวันที่สำหรับกรอกลงในแบบฟอร์มราชการ (วัน, ชื่อเดือนเต็มภาษาไทย, ปี พ.ศ.)
+ * ตัวอย่าง: "2026-10-15" -> { day: "15", month: "ตุลาคม", yearBE: "2569" }
+ */
+export function getThaiDateParts(dateStr?: string): { day: string; month: string; yearBE: string } {
+  if (!dateStr) {
+    const now = new Date();
+    const day = String(now.getDate());
+    const month = THAI_MONTHS_FULL[now.getMonth()] || '';
+    const yearBE = String(now.getFullYear() + 543);
+    return { day, month, yearBE };
+  }
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) {
+    return { day: '-', month: '-', yearBE: '-' };
+  }
+  const yearBE = String(parseInt(parts[0], 10) + 543);
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const month = THAI_MONTHS_FULL[monthIdx] || '-';
+  const day = String(parseInt(parts[2], 10));
+  return { day, month, yearBE };
+}
+
+/**
  * แปลง Date Object ของ JavaScript เป็นสตริงรูปแบบมาตรฐาน YYYY-MM-DD
  */
 export function toDateString(d: Date): string {

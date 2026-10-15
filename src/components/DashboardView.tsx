@@ -11,6 +11,7 @@ import {
   ChevronDown,
   CheckCircle2,
   Trash2,
+  Printer,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPE_MAP } from '../utils/constants';
@@ -35,6 +36,7 @@ interface DashboardViewProps {
   onOpenNewStaff: () => void;                                                   // เปิด Modal เพิ่มบุคลากรใหม่
   onNavigateTab: (tab: 'records' | 'calendar' | 'staff' | 'balance') => void;   // สลับไปยังแท็บอื่น
   onDeleteRecord: (recordId: string) => void;                                   // ลบรายการลา
+  onOpenPrintLeave?: (record: LeaveRecord) => void;                             // ฟังก์ชันเปิดพิมพ์ใบลามาตรฐาน
   selectedFiscalYear?: number | 'all';                                         // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
   availableFiscalYears?: number[];                                              // รายการปีงบประมาณที่มีข้อมูล
   onSelectFiscalYear?: (fy: number | 'all') => void;                            // ฟังก์ชันสลับปีงบประมาณ
@@ -56,6 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewStaff,
   onNavigateTab,
   onDeleteRecord,
+  onOpenPrintLeave,
   selectedFiscalYear: selectedFiscalYearProp,
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear,
@@ -459,17 +462,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {r.daysCount} วัน
                           </td>
                           <td className="py-2.5 text-right">
-                            <button
-                              onClick={() => {
-                                if (window.confirm('คุณต้องการลบรายการบันทึกการลานี้ใช่หรือไม่?')) {
-                                  onDeleteRecord(r.id);
-                                }
-                              }}
-                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors cursor-pointer"
-                              title="ลบรายการ"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              {onOpenPrintLeave && (
+                                <button
+                                  onClick={() => onOpenPrintLeave(r)}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded transition-colors cursor-pointer"
+                                  title="พิมพ์ใบลามาตรฐานสำนักงาน"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('คุณต้องการลบรายการบันทึกการลานี้ใช่หรือไม่?')) {
+                                    onDeleteRecord(r.id);
+                                  }
+                                }}
+                                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors cursor-pointer"
+                                title="ลบรายการ"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

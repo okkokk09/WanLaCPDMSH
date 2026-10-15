@@ -11,6 +11,7 @@ import { MyLeaveView } from './components/MyLeaveView';
 import { LeaveFormModal } from './components/LeaveFormModal';
 import { StaffModal } from './components/StaffModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { PrintLeaveModal } from './components/PrintLeaveModal';
 import {
   getStaffList,
   saveStaffList,
@@ -70,6 +71,9 @@ export const App: React.FC = () => {
   // สถานะสำหรับหน้าต่างป็อปอัปจัดการข้อมูลบุคลากร
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+
+  // สถานะรายการลาที่เลือกพิมพ์ใบลา (Print Leave Document)
+  const [printingRecord, setPrintingRecord] = useState<LeaveRecord | null>(null);
 
   // สถานะธีมสีระบบ ('light' หรือ 'dark')
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -302,6 +306,7 @@ export const App: React.FC = () => {
             onOpenNewStaff={handleOpenNewStaff}
             onNavigateTab={setActiveTab}
             onDeleteRecord={handleDeleteLeaveRecord}
+            onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
             onSelectFiscalYear={setSelectedFiscalYear}
@@ -314,6 +319,7 @@ export const App: React.FC = () => {
             records={records}
             onOpenNewLeave={handleOpenNewLeave}
             onDeleteRecord={handleDeleteLeaveRecord}
+            onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
             onSelectFiscalYear={setSelectedFiscalYear}
@@ -348,6 +354,7 @@ export const App: React.FC = () => {
             records={records}
             onOpenNewLeaveOnDate={isAdmin ? handleOpenNewLeaveOnDate : undefined}
             onDeleteRecord={isAdmin ? handleDeleteLeaveRecord : undefined}
+            onOpenPrintLeave={setPrintingRecord}
             isAdmin={isAdmin}
             selectedStaffId={myStaffId}
             onSelectStaff={handleSelectStaff}
@@ -361,6 +368,7 @@ export const App: React.FC = () => {
             records={records}
             selectedStaffId={myStaffId}
             onSelectStaff={handleSelectStaff}
+            onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
             onSelectFiscalYear={setSelectedFiscalYear}
@@ -417,6 +425,16 @@ export const App: React.FC = () => {
         isOpen={isAdminLoginModalOpen}
         onClose={() => setIsAdminLoginModalOpen(false)}
         onSuccess={handleAdminLoginSuccess}
+      />
+
+      {/* Modal พิมพ์ใบลามาตรฐานสำนักงาน (Print Leave Document Modal) */}
+      <PrintLeaveModal
+        isOpen={!!printingRecord}
+        onClose={() => setPrintingRecord(null)}
+        record={printingRecord}
+        staff={printingRecord ? staffList.find((s) => s.id === printingRecord.staffId) || null : null}
+        records={records}
+        staffList={staffList}
       />
     </div>
   );

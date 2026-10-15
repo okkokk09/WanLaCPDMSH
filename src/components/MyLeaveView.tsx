@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Sparkles,
   Info,
+  Printer,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP } from '../utils/constants';
@@ -24,6 +25,7 @@ interface MyLeaveViewProps {
   records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
   selectedStaffId: string | null;                             // รหัสบุคลากรที่กำลังเลือกดู
   onSelectStaff: (staffId: string) => void;                  // ฟังก์ชันเมื่อเปลี่ยนการเลือกบุคลากร
+  onOpenPrintLeave?: (record: LeaveRecord) => void;           // ฟังก์ชันเปิดพิมพ์ใบลามาตรฐาน
   selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
   availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
   onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
@@ -42,6 +44,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   records,
   selectedStaffId,
   onSelectStaff,
+  onOpenPrintLeave,
   selectedFiscalYear: selectedFiscalYearProp,
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
@@ -386,6 +389,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
                   <th className="py-3 px-3 text-center">จำนวนวัน</th>
                   <th className="py-3 px-4">เหตุผลการลา</th>
                   <th className="py-3 px-4 text-center">สถานะ</th>
+                  <th className="py-3 px-4 text-center">พิมพ์ใบลา</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -466,6 +470,20 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                             ยกเลิก
                           </span>
+                        )}
+                      </td>
+
+                      {/* Print Leave */}
+                      <td className="py-3 px-4 text-center">
+                        {onOpenPrintLeave && (
+                          <button
+                            onClick={() => onOpenPrintLeave(r)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-semibold rounded-lg text-[11px] transition-colors cursor-pointer border border-indigo-200 dark:border-indigo-800"
+                            title="พิมพ์ใบลามาตรฐานสำนักงาน"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>พิมพ์ใบลา</span>
+                          </button>
                         )}
                       </td>
                     </tr>

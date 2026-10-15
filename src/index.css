@@ -42,7 +42,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   background: #475569;
 }
 
-/* Print styles for reports */
+/* Print styles for reports and official leave documents */
 @media print {
   .no-print {
     display: none !important;
@@ -51,4 +51,26 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     background: white !important;
     color: black !important;
   }
+
+  /* When printing the leave document modal, hide everything else */
+  body:has(#print-leave-document) > *:not(:has(#print-leave-document)) {
+    display: none !important;
+  }
+
+  #print-leave-document {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 12mm 15mm;
+  }
 }
+

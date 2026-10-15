@@ -10,6 +10,7 @@ import {
   Clock,
   Search,
   Flag,
+  Printer,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP, WORK_GROUPS } from '../utils/constants';
@@ -30,6 +31,7 @@ interface CalendarViewProps {
   records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
   onOpenNewLeaveOnDate?: (dateStr: string) => void;           // ฟังก์ชันเปิด Modal บันทึกการลาใหม่โดยระบุวันที่ล่วงหน้า
   onDeleteRecord?: (recordId: string) => void;                 // ฟังก์ชันลบรายการลา (สิทธิ์ Admin)
+  onOpenPrintLeave?: (record: LeaveRecord) => void;           // ฟังก์ชันเปิดพิมพ์ใบลามาตรฐาน
   isAdmin?: boolean;                                          // เป็นผู้ดูแลระบบหรือไม่
   selectedStaffId?: string | null;                            // รหัสบุคลากรที่เลือกกรองจากภายนอก
   onSelectStaff?: (staffId: string) => void;                  // ฟังก์ชันแจ้งเตือนเมื่อเปลี่ยนการเลือกบุคลากร
@@ -50,6 +52,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   records,
   onOpenNewLeaveOnDate,
   onDeleteRecord,
+  onOpenPrintLeave,
   isAdmin = true,
   selectedStaffId: propSelectedStaffId,
   onSelectStaff,
@@ -536,8 +539,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         )}
                       </div>
 
-                      {isAdmin && onDeleteRecord && (
-                        <div className="mt-2 text-right">
+                      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2">
+                        {onOpenPrintLeave ? (
+                          <button
+                            onClick={() => {
+                              onOpenPrintLeave(record);
+                              setDetailDate(null);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg transition-colors cursor-pointer"
+                            title="พิมพ์ใบลามาตรฐานสำนักงาน"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>พิมพ์ใบลา</span>
+                          </button>
+                        ) : <div />}
+
+                        {isAdmin && onDeleteRecord && (
                           <button
                             onClick={() => {
                               if (window.confirm('คุณต้องการลบรายการบันทึกการลานี้ใช่หรือไม่?')) {
@@ -549,8 +566,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           >
                             ลบรายการนี้
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
