@@ -296,7 +296,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Admin Tabs */}
         {isAdmin && activeTab === 'dashboard' && (
           <DashboardView
@@ -378,7 +378,7 @@ export const App: React.FC = () => {
 
       {/* Footer */}
       <footer className="mt-auto py-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-slate-400 dark:text-slate-500 no-print transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             ระบบบันทึกวันลา (Leave Management System) • {isAdmin ? 'โหมดผู้ดูแลระบบ' : 'โหมดบุคลากรทั่วไป'}
           </span>
