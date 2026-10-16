@@ -126,7 +126,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   }, [filteredRecords]);
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-4 animate-in fade-in duration-200 pr-1">
       {/* Header Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

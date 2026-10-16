@@ -71,8 +71,8 @@ export function initStreamlitBridge(onRender: RenderCallback): () => void {
     }
   }
 
-  // ปรับความสูงเริ่มต้นของ iframe
-  setStreamlitFrameHeight(1200);
+  // ปรับความสูงเริ่มต้นของ iframe ให้พอดีกับหน้าต่าง
+  setStreamlitFrameHeight();
 
   // คืนค่าฟังก์ชันสำหรับยกเลิก Event Listener เมื่อ Unmount
   return () => {
@@ -115,18 +115,12 @@ export function sendRecordsToStreamlit(records: LeaveRecord[]): void {
 export function setStreamlitFrameHeight(height?: number): void {
   if (!isRunningInStreamlit()) return;
   try {
-    const h =
-      height ||
-      Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-        1000
-      );
+    const h = height || window.innerHeight || 800;
     window.parent.postMessage(
       {
         isStreamlitMessage: true,
         type: 'streamlit:setFrameHeight',
-        height: h + 40,
+        height: h,
       },
       '*'
     );

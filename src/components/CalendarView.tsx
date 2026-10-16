@@ -169,9 +169,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   }, [detailDate]);
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="flex-1 min-h-0 flex flex-col gap-2.5 animate-in fade-in duration-200 overflow-hidden">
       {/* Calendar Header with navigation & filters */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="flex-shrink-0 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2.5 sm:p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5">
         {/* Month Navigation */}
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
@@ -274,7 +274,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Active Staff Filter Banner */}
       {selectedStaffId !== 'all' && staffMap.get(selectedStaffId) && (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl text-xs text-indigo-800 dark:text-indigo-200 shadow-2xs animate-in fade-in">
+        <div className="flex-shrink-0 shrink-0 flex items-center justify-between px-3.5 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl text-xs text-indigo-800 dark:text-indigo-200 shadow-2xs animate-in fade-in">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400">
               <Users className="w-3.5 h-3.5" />
@@ -298,13 +298,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       )}
 
       {/* Calendar Grid */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 text-center text-xs font-bold text-slate-600 dark:text-slate-300">
+        <div className="flex-shrink-0 shrink-0 grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 text-center text-xs font-bold text-slate-600 dark:text-slate-300">
           {THAI_DAYS_SHORT.map((dayName, idx) => (
             <div
               key={dayName}
-              className={`py-3 ${idx === 0 || idx === 6 ? 'text-rose-500' : 'text-slate-700 dark:text-slate-300'}`}
+              className={`py-2 sm:py-2.5 ${idx === 0 || idx === 6 ? 'text-rose-500' : 'text-slate-700 dark:text-slate-300'}`}
             >
               {dayName}
             </div>
@@ -312,7 +312,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
 
         {/* Days grid */}
-        <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 dark:divide-slate-800">
+        <div
+          className="flex-1 min-h-0 grid grid-cols-7 divide-x divide-y divide-slate-100 dark:divide-slate-800 overflow-y-auto"
+          style={{ gridTemplateRows: `repeat(${calendarCells.length / 7}, minmax(0, 1fr))` }}
+        >
           {calendarCells.map((cell) => {
             const leavesOnDay = filteredRecords.filter((r) =>
               isDateInLeaveRange(cell.dateStr, r)
@@ -322,7 +325,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div
                 key={cell.dateStr}
                 onClick={() => setDetailDate(cell.dateStr)}
-                className={`min-h-[105px] p-2 flex flex-col justify-between transition-colors cursor-pointer relative group ${
+                className={`min-h-0 p-1 sm:p-1.5 flex flex-col justify-between transition-colors cursor-pointer relative group overflow-hidden ${
                   !cell.isCurrentMonth
                     ? 'bg-slate-50/50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-600'
                     : cell.holiday
@@ -333,10 +336,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 }`}
               >
                 {/* Cell Header: Day number, holiday badge & quick add */}
-                <div>
+                <div className="flex-shrink-0 shrink-0">
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                      className={`text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${
                         cell.isToday
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : cell.isWeekend && cell.isCurrentMonth
@@ -356,7 +359,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           e.stopPropagation();
                           onOpenNewLeaveOnDate(cell.dateStr);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-md transition-all cursor-pointer"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 sm:p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-md transition-all cursor-pointer"
                         title="บันทึกการลาในวันนี้"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -367,7 +370,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   {/* Holiday Badge */}
                   {cell.holiday && cell.isCurrentMonth && (
                     <div
-                      className="mt-1 mb-0.5 px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 text-[10px] font-semibold truncate border border-rose-200 dark:border-rose-900 flex items-center gap-1 shadow-2xs"
+                      className="mt-0.5 px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 text-[10px] font-semibold truncate border border-rose-200 dark:border-rose-900 flex items-center gap-1 shadow-2xs"
                       title={`วันหยุดราชการ: ${cell.holiday.name}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
@@ -377,8 +380,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
 
                 {/* Leaves Badges */}
-                <div className="mt-1 space-y-1 flex-1">
-                  {leavesOnDay.slice(0, 3).map((r) => {
+                <div className="mt-1 space-y-1 flex-1 min-h-0 max-h-[120px] overflow-y-auto pr-0.5">
+                  {leavesOnDay.map((r) => {
                     const staff = staffMap.get(r.staffId);
                     const leaveType = LEAVE_TYPE_MAP.get(r.leaveTypeId);
                     return (
@@ -399,12 +402,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       </div>
                     );
                   })}
-
-                  {leavesOnDay.length > 3 && (
-                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 text-center py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md">
-                      +{leavesOnDay.length - 3} คน
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -413,7 +410,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="flex-shrink-0 shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-1.5 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold">
           <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span>สัญลักษณ์ประเภทการลา:</span>

@@ -118,8 +118,8 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   // If no staff selected, show friendly picker
   if (!currentStaff) {
     return (
-      <div className="max-w-xl mx-auto py-12 px-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl text-center">
+      <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="max-w-xl w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl text-center">
           <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-5 shadow-inner">
             <User className="w-8 h-8" />
           </div>
@@ -178,7 +178,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   const carriedOver = currentStaff.carriedOverVacationDays || 0;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-5 animate-in fade-in duration-200 pr-1">
       {/* Profile Header Card */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

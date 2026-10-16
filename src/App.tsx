@@ -275,7 +275,7 @@ export const App: React.FC = () => {
   const isAdmin = userRole === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+    <div className="h-screen max-h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* Top Navigation */}
       <Navbar
         activeTab={activeTab}
@@ -296,7 +296,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
         {/* Admin Tabs */}
         {isAdmin && activeTab === 'dashboard' && (
           <DashboardView
@@ -377,8 +377,8 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto py-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-slate-400 dark:text-slate-500 no-print transition-colors duration-200">
-        <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="flex-shrink-0 shrink-0 py-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-slate-400 dark:text-slate-500 no-print transition-colors duration-200">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px]">
           <span>
             ระบบบันทึกวันลา (Leave Management System) • {isAdmin ? 'โหมดผู้ดูแลระบบ' : 'โหมดบุคลากรทั่วไป'}
           </span>

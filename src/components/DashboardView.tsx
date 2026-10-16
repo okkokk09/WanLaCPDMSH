@@ -136,7 +136,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-5 animate-in fade-in duration-200 pr-1">
       {/* Top Welcome & Quick Actions Bar */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
