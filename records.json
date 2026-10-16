@@ -1,5 +1,18 @@
 [
   {
+    "staffId": "staff-30",
+    "leaveTypeId": "vacation",
+    "startDate": "2026-10-26",
+    "endDate": "2026-10-26",
+    "period": "full",
+    "daysCount": 1,
+    "skipWeekends": true,
+    "reason": "",
+    "status": "approved",
+    "id": "rec-1792136985966",
+    "createdAt": "2026-10-16T07:49:45.966Z"
+  },
+  {
     "staffId": "staff-37",
     "leaveTypeId": "vacation",
     "startDate": "2026-10-19",
@@ -9,8 +22,8 @@
     "skipWeekends": true,
     "reason": "",
     "status": "approved",
-    "id": "rec-1792134368893",
-    "createdAt": "2026-10-16T07:06:08.893Z"
+    "id": "rec-1792130377866",
+    "createdAt": "2026-10-16T05:59:37.866Z"
   },
   {
     "staffId": "staff-6",
