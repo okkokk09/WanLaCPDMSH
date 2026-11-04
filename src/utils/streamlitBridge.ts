@@ -40,6 +40,20 @@ export function isRunningInStreamlit(): boolean {
 export function initStreamlitBridge(onRender: RenderCallback): () => void {
   renderListeners.push(onRender);
 
+  // ตรวจสอบว่ามีข้อมูล render ที่ถูกส่งมาก่อนที่ React โหลดเสร็จหรือไม่ (จาก Instant Handshake ใน index.html)
+  if (typeof window !== 'undefined') {
+    const win = window as unknown as { __streamlitEarlyArgs?: StreamlitArgs | null };
+    if (win.__streamlitEarlyArgs) {
+      const earlyArgs = win.__streamlitEarlyArgs;
+      win.__streamlitEarlyArgs = null;
+      try {
+        onRender(earlyArgs);
+      } catch (err) {
+        console.error('Error executing early Streamlit render callback:', err);
+      }
+    }
+  }
+
   // ฟังก์ชันดักจับข้อความ window.message จาก Parent (Streamlit)
   const handleMessage = (event: MessageEvent) => {
     if (!event.data) return;

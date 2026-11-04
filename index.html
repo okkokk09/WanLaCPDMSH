@@ -5,6 +5,31 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'></rect><line x1='16' y1='2' x2='16' y2='6'></line><line x1='8' y1='2' x2='8' y2='6'></line><line x1='3' y1='10' x2='21' y2='10'></line><circle cx='12' cy='15' r='1.5' fill='%234f46e5'></circle></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ระบบบันทึกวันลา - Leave Management System</title>
+    <!-- Streamlit Instant Handshake: ส่งสัญญาณ componentReady ทันทีที่โหลด HTML เพื่อป้องกัน Timeout -->
+    <script>
+      (function() {
+        try {
+          window.__streamlitEarlyArgs = null;
+          window.addEventListener('message', function(event) {
+            if (event && event.data && event.data.type === 'streamlit:render') {
+              window.__streamlitEarlyArgs = event.data.args || {};
+            }
+          });
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              isStreamlitMessage: true,
+              type: 'streamlit:componentReady',
+              apiVersion: 1,
+            }, '*');
+            window.parent.postMessage({
+              isStreamlitMessage: true,
+              type: 'streamlit:setFrameHeight',
+              height: window.innerHeight || 800,
+            }, '*');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <!-- Google Fonts Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
