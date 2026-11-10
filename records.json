@@ -1,5 +1,18 @@
 [
   {
+    "staffId": "staff-30",
+    "leaveTypeId": "business",
+    "startDate": "2026-11-23",
+    "endDate": "2026-11-30",
+    "period": "full",
+    "daysCount": 6,
+    "skipWeekends": true,
+    "reason": "",
+    "status": "approved",
+    "id": "rec-1794295768770",
+    "createdAt": "2026-11-10T07:29:28.770Z"
+  },
+  {
     "staffId": "staff-8",
     "leaveTypeId": "vacation",
     "startDate": "2026-11-12",
