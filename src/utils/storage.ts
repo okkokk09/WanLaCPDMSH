@@ -631,8 +631,8 @@ export function calculateStaffSummaries(
     const remainingByType: Record<string, number> = {};
     const quotas: Record<string, number> = { ...getDefaultQuotas(staff.position), ...staff.quotas };
 
-    // Add carried-over vacation days to vacation quota if present
-    const carriedOverVacationDays = staff.carriedOverVacationDays || 0;
+    // วันลาพักผ่อนสะสมยกมา (ใช้เฉพาะปีงบประมาณ 2570 เป็นต้นไป ไม่นำไปปนกับปีงบประมาณ 2569)
+    const carriedOverVacationDays = fiscalYear !== 'all' && fiscalYear < 2570 ? 0 : (staff.carriedOverVacationDays || 0);
     if (carriedOverVacationDays > 0) {
       quotas['vacation'] = (quotas['vacation'] || 0) + carriedOverVacationDays;
     }
@@ -801,7 +801,7 @@ export function exportSummaryToExcel(summaries: StaffLeaveSummary[]): void {
       s.staff.name,
       s.staff.position,
       s.staff.department,
-      s.staff.carriedOverVacationDays || 0,
+      s.carriedOverVacationDays || 0,
     ];
 
     LEAVE_TYPES.forEach((t) => {
@@ -845,7 +845,7 @@ export function exportSummaryToCsv(summaries: StaffLeaveSummary[]): void {
       `"${(s.staff.name || '').replace(/"/g, '""')}"`,
       `"${(s.staff.position || '').replace(/"/g, '""')}"`,
       `"${(s.staff.department || '').replace(/"/g, '""')}"`,
-      s.staff.carriedOverVacationDays || 0,
+      s.carriedOverVacationDays || 0,
     ];
 
     LEAVE_TYPES.forEach((t) => {

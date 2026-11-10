@@ -21,6 +21,9 @@ import {
   THAI_DAYS_SHORT,
   isDateInLeaveRange,
   formatThaiDateFull,
+  getFiscalYear,
+  getCurrentFiscalYear,
+  getAvailableFiscalYears,
 } from '../utils/dateUtils';
 
 /**
@@ -35,17 +38,23 @@ interface CalendarViewProps {
   isAdmin?: boolean;                                          // เป็นผู้ดูแลระบบหรือไม่
   selectedStaffId?: string | null;                            // รหัสบุคลากรที่เลือกกรองจากภายนอก
   onSelectStaff?: (staffId: string) => void;                  // ฟังก์ชันแจ้งเตือนเมื่อเปลี่ยนการเลือกบุคลากร
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกแสดงผล
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
+}
+
+/**
+ * คำนวณปีงบประมาณ พ.ศ. ของเดือนที่แสดงในปฏิทิน (year = ค.ศ., month = 0..11)
+ * เดือน 9, 10, 11 (ต.ค., พ.ย., ธ.ค.) นับเป็นปีงบประมาณ year + 544
+ * เดือน 0..8 (ม.ค. - ก.ย.) นับเป็นปีงบประมาณ year + 543
+ */
+function getCalendarMonthFiscalYear(year: number, month: number): number {
+  return month >= 9 ? year + 544 : year + 543;
 }
 
 /**
  * คอมโพเนนต์ปฏิทินวันลาปฏิบัติงาน (CalendarView)
- * ประกอบด้วย:
- * - ปฏิทินแสดงผลรายเดือน พร้อมแปลงปี ค.ศ. เป็น พ.ศ. และชื่อเดือนภาษาไทย
- * - แถบนำทางเดือน (เดือนก่อนหน้า, เดือนถัดไป, ปุ่มกระโดดกลับมา "วันนี้")
- * - การแสดงวันหยุดนักขัตฤกษ์ราชการ พ.ศ. 2569–2571 พร้อมชื่อวันหยุด
- * - การแสดงแท็ก/ชิปรายการลาของแต่ละคนแยกสีตามประเภทการลาและกลุ่มงาน
- * - ตัวกรองกลุ่มงาน, ตัวกรองบุคลากร และช่องค้นหาชื่อ
- * - หน้าต่างป็อปอัปแสดงรายละเอียดผู้ลาในวันที่คลิกเลือก (Date Detail Modal)
+ * แยกข้อมูลตามปีงบประมาณอย่างชัดเจน (ไม่นำวันลาของปีงบประมาณ 2569 และ 2570 มาปนกัน)
  */
 export const CalendarView: React.FC<CalendarViewProps> = ({
   staffList,
@@ -56,8 +65,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   isAdmin = true,
   selectedStaffId: propSelectedStaffId,
   onSelectStaff,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear,
 }) => {
   const today = new Date();
+  const currentFY = getCurrentFiscalYear();
+  const activeFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : currentFY;
+
+  const availableFiscalYearsList = useMemo(() => {
+    return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
+  }, [availableFiscalYearsProp, records]);
+
   // ปี ค.ศ. ปัจจุบันในปฏิทิน
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   // เดือนปัจจุบันในปฏิทิน (0 = มกราคม, 11 = ธันวาคม)
@@ -75,6 +97,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // แผนผัง Map ค้นหาข้อมูลบุคลากรตาม staffId (O(1))
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
+
+  // เมื่อผู้ใช้สลับปีงบประมาณ (เช่น สลับระหว่าง 2569 กับ 2570) ให้กระโดดไปยังเดือนในปีงบประมาณนั้นทันที
+  useEffect(() => {
+    const displayedFY = getCalendarMonthFiscalYear(currentYear, currentMonth);
+    if (displayedFY !== activeFiscalYear) {
+      const now = new Date();
+      const nowFY = getCalendarMonthFiscalYear(now.getFullYear(), now.getMonth());
+      if (activeFiscalYear === nowFY) {
+        setCurrentYear(now.getFullYear());
+        setCurrentMonth(now.getMonth());
+      } else {
+        // ค้นหาเดือนล่าสุดที่มีข้อมูลการลาในปีงบประมาณที่เลือก หรือใช้เดือนกันยายนของปีงบประมาณนั้น
+        const recordsInTargetFY = records
+          .filter((r) => r.status !== 'rejected' && getFiscalYear(r.startDate) === activeFiscalYear)
+          .sort((a, b) => b.startDate.localeCompare(a.startDate));
+        if (recordsInTargetFY.length > 0) {
+          const parts = recordsInTargetFY[0].startDate.split('-');
+          setCurrentYear(parseInt(parts[0], 10));
+          setCurrentMonth(parseInt(parts[1], 10) - 1);
+        } else {
+          // เดือนกันยายนของปีงบประมาณนั้น (เช่น ปีงบฯ 2569 -> กันยายน 2026)
+          setCurrentYear(activeFiscalYear - 543);
+          setCurrentMonth(8);
+        }
+      }
+    }
+  }, [activeFiscalYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ซิงก์ค่า selectedStaffId กับ Prop ที่ส่งมาจากภายนอก (Navbar)
   useEffect(() => {
@@ -96,37 +145,49 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-  // เลื่อนไปเดือนก่อนหน้า
+  // เลื่อนไปเดือนก่อนหน้า (พร้อมซิงก์ปีงบประมาณอัตโนมัติเมื่อข้ามต.ค./ก.ย.)
   const handlePrevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
+    const nextM = currentMonth === 0 ? 11 : currentMonth - 1;
+    const nextY = currentMonth === 0 ? currentYear - 1 : currentYear;
+    setCurrentMonth(nextM);
+    setCurrentYear(nextY);
+    const nextFY = getCalendarMonthFiscalYear(nextY, nextM);
+    if (nextFY !== activeFiscalYear && onSelectFiscalYear) {
+      onSelectFiscalYear(nextFY);
     }
   };
 
-  // เลื่อนไปเดือนถัดไป
+  // เลื่อนไปเดือนถัดไป (พร้อมซิงก์ปีงบประมาณอัตโนมัติเมื่อข้ามก.ย./ต.ค.)
   const handleNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
+    const nextM = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nextY = currentMonth === 11 ? currentYear + 1 : currentYear;
+    setCurrentMonth(nextM);
+    setCurrentYear(nextY);
+    const nextFY = getCalendarMonthFiscalYear(nextY, nextM);
+    if (nextFY !== activeFiscalYear && onSelectFiscalYear) {
+      onSelectFiscalYear(nextFY);
     }
   };
 
   // กระโดดกลับมาดูเดือนและปีปัจจุบัน (วันนี้)
   const handleJumpToToday = () => {
     const n = new Date();
-    setCurrentYear(n.getFullYear());
-    setCurrentMonth(n.getMonth());
+    const nY = n.getFullYear();
+    const nM = n.getMonth();
+    setCurrentYear(nY);
+    setCurrentMonth(nM);
+    const nFY = getCalendarMonthFiscalYear(nY, nM);
+    if (nFY !== activeFiscalYear && onSelectFiscalYear) {
+      onSelectFiscalYear(nFY);
+    }
   };
 
-  // กรองรายการลาที่จะนำมาแสดงบนปฏิทินตามกลุ่มงาน, บุคลากร และคำค้นหา
+  // กรองรายการลาที่จะนำมาแสดงบนปฏิทิน เฉพาะในปีงบประมาณที่เลือกเท่านั้น (ไม่นำปีงบประมาณอื่นมาปน)
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
       if (r.status === 'rejected') return false;
+      // แยกปีงบประมาณอย่างเด็ดขาด
+      if (getFiscalYear(r.startDate) !== activeFiscalYear) return false;
       const staff = staffMap.get(r.staffId);
       if (!staff) return false;
       if (selectedDept !== 'all' && staff.department !== selectedDept) return false;
@@ -139,7 +200,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       }
       return true;
     });
-  }, [records, staffMap, selectedDept, selectedStaffId, searchQuery]);
+  }, [records, activeFiscalYear, staffMap, selectedDept, selectedStaffId, searchQuery]);
 
   // คำนวณช่องตารางปฏิทิน 35-42 ช่อง (รวมวันของเดือนก่อนหน้าและเดือนถัดไป)
   const calendarCells = useMemo(() => {
@@ -151,9 +212,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return Array.from(new Set([...WORK_GROUPS, ...staffList.map((s) => s.department)]));
   }, [staffList]);
 
-  // รายการลาของวันที่ถูกคลิกเลือกใน Modal แสดงรายละเอียด
+  // รายการลาของวันที่ถูกคลิกเลือกใน Modal แสดงรายละเอียด (เฉพาะในปีงบประมาณที่เลือก)
   const detailRecords = useMemo(() => {
     if (!detailDate) return [];
+    if (getFiscalYear(detailDate) !== activeFiscalYear) return [];
     return filteredRecords
       .filter((r) => isDateInLeaveRange(detailDate, r))
       .map((r) => ({
@@ -161,7 +223,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         staff: staffMap.get(r.staffId),
         leaveType: LEAVE_TYPE_MAP.get(r.leaveTypeId),
       }));
-  }, [detailDate, filteredRecords, staffMap]);
+  }, [detailDate, activeFiscalYear, filteredRecords, staffMap]);
 
   // ข้อมูลวันหยุดนักขัตฤกษ์ของวันที่ถูกคลิกเลือก (ถ้ามี)
   const detailHoliday = useMemo(() => {
@@ -172,8 +234,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     <div className="flex-1 min-h-0 flex flex-col gap-2.5 animate-in fade-in duration-200 overflow-hidden">
       {/* Calendar Header with navigation & filters */}
       <div className="flex-shrink-0 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2.5 sm:p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5">
-        {/* Month Navigation */}
-        <div className="flex items-center gap-3">
+        {/* Month Navigation & Fiscal Year Switcher */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
             <button
               onClick={handlePrevMonth}
@@ -192,7 +254,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span>
                 {THAI_MONTHS_FULL[currentMonth]} {currentYear + 543}
               </span>
@@ -206,6 +268,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           >
             วันนี้
           </button>
+
+          {/* Fiscal Year Pill Switcher */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+            {availableFiscalYearsList.map((fy) => {
+              const isSelected = activeFiscalYear === fy;
+              return (
+                <button
+                  key={fy}
+                  type="button"
+                  onClick={() => onSelectFiscalYear?.(fy)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                  }`}
+                >
+                  ปีงบฯ {fy}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Filters */}
@@ -282,7 +365,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <span>
               กำลังแสดงผลเฉพาะวันลาของ: <strong className="font-bold underline underline-offset-2">{staffMap.get(selectedStaffId)?.name}</strong>
               <span className="text-indigo-600/80 dark:text-indigo-400/80 ml-1.5 font-normal">
-                ({staffMap.get(selectedStaffId)?.department})
+                ({staffMap.get(selectedStaffId)?.department} • ปีงบประมาณ {activeFiscalYear})
               </span>
             </span>
           </div>
@@ -317,9 +400,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           style={{ gridTemplateRows: `repeat(${calendarCells.length / 7}, minmax(0, 1fr))` }}
         >
           {calendarCells.map((cell) => {
-            const leavesOnDay = filteredRecords.filter((r) =>
-              isDateInLeaveRange(cell.dateStr, r)
-            );
+            // แสดงรายการลาเฉพาะวันที่อยู่ในปีงบประมาณที่เลือกเท่านั้น (ป้องกันวันลาของปีงบฯ 2569 และ 2570 ปนกันในช่องรอยต่อเดือน ก.ย.-ต.ค.)
+            const isInActiveFY = getFiscalYear(cell.dateStr) === activeFiscalYear;
+            const leavesOnDay = isInActiveFY
+              ? filteredRecords.filter((r) => isDateInLeaveRange(cell.dateStr, r))
+              : [];
 
             return (
               <div
@@ -327,7 +412,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 onClick={() => setDetailDate(cell.dateStr)}
                 className={`min-h-0 p-1 sm:p-1.5 flex flex-col justify-between transition-colors cursor-pointer relative group overflow-hidden ${
                   !cell.isCurrentMonth
-                    ? 'bg-slate-50/50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-600'
+                    ? 'bg-slate-50/50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-600 opacity-50'
                     : cell.holiday
                     ? 'bg-rose-50/35 dark:bg-rose-950/25 hover:bg-rose-100/50 dark:hover:bg-rose-900/40'
                     : cell.isWeekend
@@ -390,7 +475,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border flex items-center justify-between gap-1 shadow-2xs ${
                           leaveType?.color.badge || 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}
-                        title={`${staff?.name || ''} - ${leaveType?.name || ''} (${r.daysCount} วัน)`}
+                        title={`${staff?.name || ''} - ${leaveType?.name || ''} (${r.daysCount} วัน • ปีงบฯ ${activeFiscalYear})`}
                       >
                         <div className="flex items-center gap-1 min-w-0">
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${leaveType?.color.dot}`} />
@@ -413,7 +498,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <div className="flex-shrink-0 shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-1.5 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold">
           <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span>สัญลักษณ์ประเภทการลา:</span>
+          <span>สัญลักษณ์ประเภทการลา (กำลังแสดงเฉพาะปีงบประมาณ {activeFiscalYear}):</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 text-[11px] font-medium shadow-2xs">
@@ -447,6 +532,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <span>รายละเอียดการลา</span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    ปีงบประมาณ {getFiscalYear(detailDate)}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {formatThaiDateFull(detailDate)}
@@ -497,7 +585,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
               {detailRecords.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                  ไม่มีบุคลากรลาในวันนี้
+                  {getFiscalYear(detailDate) !== activeFiscalYear ? (
+                    <div className="space-y-2">
+                      <div>วันที่นี้อยู่ใน <b>ปีงบประมาณ {getFiscalYear(detailDate)}</b> (ขณะนี้กำลังเลือกดูปีงบประมาณ {activeFiscalYear})</div>
+                      {onSelectFiscalYear && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectFiscalYear(getFiscalYear(detailDate));
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer"
+                        >
+                          สลับไปดูปีงบประมาณ {getFiscalYear(detailDate)}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    'ไม่มีบุคลากรลาในวันนี้'
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
@@ -527,7 +632,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300 space-y-1">
                         <div className="flex items-center gap-2">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>จำนวนวันลา: {record.daysCount} วัน</span>
+                          <span>จำนวนวันลา: {record.daysCount} วัน (ปีงบฯ {getFiscalYear(record.startDate)})</span>
                         </div>
                         {record.reason && (
                           <div className="text-slate-700 dark:text-slate-300 italic">

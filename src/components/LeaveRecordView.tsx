@@ -11,7 +11,13 @@ import {
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP, WORK_GROUPS } from '../utils/constants';
-import { formatThaiDateShort, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
+import {
+  formatThaiDateShort,
+  getFiscalYear,
+  getCurrentFiscalYear,
+  getAvailableFiscalYears,
+  formatFiscalYearLabel,
+} from '../utils/dateUtils';
 import { exportRecordsToExcel } from '../utils/storage';
 
 /**
@@ -30,14 +36,7 @@ interface LeaveRecordViewProps {
 
 /**
  * คอมโพเนนต์หน้าจอแสดงและค้นหาประวัติการลาทั้งหมด (LeaveRecordView)
- * ประกอบด้วย:
- * - ตัวกรองปีงบประมาณ (Fiscal Year Switcher) เช่น ปีงบฯ 2569 / 2570 หรือดูทั้งหมด
- * - ช่องค้นหาอัจฉริยะ (ค้นหาตามชื่อบุคลากร หรือเหตุผลการลา)
- * - ตัวกรองประเภทการลา (ลาป่วย, ลากิจ, ลาพักผ่อน, ลาคลอด)
- * - ตัวกรองกลุ่มงาน / ฝ่าย
- * - ตัวกรองเฉพาะบุคคล
- * - ปุ่มส่งออกข้อมูลเป็น Excel (.xlsx) ตามผลลัพธ์ที่กรอง
- * - ตารางแสดงประวัติการลา พร้อมปุ่มลบรายการลา (สิทธิ์ Admin)
+ * แยกข้อมูลตามปีงบประมาณอย่างชัดเจน (ไม่นำวันลาของปีงบประมาณ 2569 และ 2570 มาปนกัน)
  */
 export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   staffList,
@@ -49,22 +48,27 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
+  const currentFY = getCurrentFiscalYear();
   // สถานะช่องค้นหาและตัวกรองต่างๆ
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
-  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>('all');
+  const [localFiscalYear, setLocalFiscalYear] = useState<number>(currentFY);
 
-  // ปีงบประมาณที่ใช้งานจริง (ใช้ค่าจาก Props หากมี มิฉะนั้นใช้ Local State)
-  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  // ปีงบประมาณที่ใช้งานจริง (แยกขาดแต่ละปีงบประมาณ ไม่ปนกัน)
+  const activeFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : localFiscalYear;
+
   // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
   // จัดการการเปลี่ยนปีงบประมาณ
-  const handleFiscalYearChange = (fy: number | 'all') => {
+  const handleFiscalYearChange = (fy: number) => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
     } else {
@@ -89,8 +93,8 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         const reason = r.reason?.toLowerCase() || '';
         const query = searchQuery.toLowerCase().trim();
 
-        // 1. กรองตามปีงบประมาณ (คำนวณจากวันที่เริ่มลา startDate)
-        if (activeFiscalYear !== 'all' && getFiscalYear(r.startDate) !== activeFiscalYear) {
+        // 1. กรองแยกตามปีงบประมาณอย่างเด็ดขาด (คำนวณจากวันที่เริ่มลา startDate)
+        if (getFiscalYear(r.startDate) !== activeFiscalYear) {
           return false;
         }
 
@@ -125,25 +129,57 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
     return filteredRecords.reduce((sum, r) => sum + r.daysCount, 0);
   }, [filteredRecords]);
 
+  const hasSubFilters =
+    Boolean(searchQuery.trim()) ||
+    selectedType !== 'all' ||
+    selectedDept !== 'all' ||
+    selectedStaffId !== 'all';
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-4 animate-in fade-in duration-200 pr-1">
       {/* Header Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">ประวัติและบันทึกการลาทั้งหมด</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">ประวัติและบันทึกการลา</h2>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {formatFiscalYearLabel(activeFiscalYear, true)}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            ค้นหา ตรวจสอบ และจัดการประวัติการลาของบุคลากรทุกคน
+            แสดงข้อมูลเฉพาะปีงบประมาณ {activeFiscalYear} (แยกข้อมูลระหว่างปีงบฯ 2569 และ 2570 อย่างชัดเจน)
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Fiscal Year Pill Switcher */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+            {availableFiscalYearsList.map((fy) => {
+              const isSelected = activeFiscalYear === fy;
+              return (
+                <button
+                  key={fy}
+                  type="button"
+                  onClick={() => handleFiscalYearChange(fy)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                  }`}
+                >
+                  ปีงบฯ {fy}
+                </button>
+              );
+            })}
+          </div>
+
           <button
             onClick={() => exportRecordsToExcel(filteredRecords, staffList)}
             className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
             title="ส่งออกรายการตามที่กรองไว้เป็นไฟล์ Excel"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>ส่งออก Excel {activeFiscalYear !== 'all' ? `(ปีงบฯ ${activeFiscalYear})` : ''}</span>
+            <span>ส่งออก Excel (ปีงบฯ {activeFiscalYear})</span>
           </button>
           <button
             onClick={onOpenNewLeave}
@@ -163,15 +199,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
             <select
               value={activeFiscalYear}
               onChange={(e) => {
-                const val = e.target.value;
-                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
+                handleFiscalYearChange(parseInt(e.target.value, 10));
               }}
               className="w-full px-3 py-2 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
               title="เลือกสลับดูข้อมูลตามปีงบประมาณ"
             >
-              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-normal">
-                ทุกปีงบประมาณ
-              </option>
               {availableFiscalYearsList.map((fy) => (
                 <option key={fy} value={fy} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-semibold">
                   {formatFiscalYearLabel(fy)}
@@ -244,26 +276,21 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
         {/* Count summary bar */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
           <div>
-            พบข้อมูลการลาทั้งหมด <b className="text-slate-800 dark:text-slate-200">{filteredRecords.length}</b> รายการ (รวม{' '}
+            พบข้อมูลการลาในปีงบประมาณ <b>{activeFiscalYear}</b> ทั้งหมด{' '}
+            <b className="text-slate-800 dark:text-slate-200">{filteredRecords.length}</b> รายการ (รวม{' '}
             <b className="text-indigo-600 dark:text-indigo-400">{totalFilteredDays}</b> วัน)
-            {activeFiscalYear !== 'all' && (
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
-                ปีงบประมาณ {activeFiscalYear}
-              </span>
-            )}
           </div>
-          {(searchQuery || selectedType !== 'all' || selectedDept !== 'all' || selectedStaffId !== 'all' || activeFiscalYear !== 'all') && (
+          {hasSubFilters && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setSelectedType('all');
                 setSelectedDept('all');
                 setSelectedStaffId('all');
-                handleFiscalYearChange('all');
               }}
               className="text-xs text-rose-500 hover:text-rose-700 font-medium cursor-pointer"
             >
-              ล้างตัวกรองทั้งหมด
+              ล้างตัวกรองการค้นหา
             </button>
           )}
         </div>
@@ -276,9 +303,11 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
             <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <Calendar className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">ไม่พบรายการบันทึกการลา</h3>
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              ไม่พบรายการบันทึกการลาในปีงบประมาณ {activeFiscalYear}
+            </h3>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง หรือบันทึกรายการลาใหม่
+              ลองปรับเปลี่ยนคำค้นหา หรือสลับปีงบประมาณด้านบนเพื่อดูข้อมูลปีอื่น
             </p>
           </div>
         ) : (
@@ -332,7 +361,7 @@ export const LeaveRecordView: React.FC<LeaveRecordViewProps> = ({
                             </span>
                           )}
                         </div>
-                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60">
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           ปีงบฯ {getFiscalYear(r.startDate)}
                         </span>
                       </td>

@@ -44,12 +44,7 @@ interface DashboardViewProps {
 
 /**
  * คอมโพเนนต์หน้าจอแดชบอร์ดภาพรวมระบบ (DashboardView)
- * ประกอบด้วย:
- * - ตัวสลับปีงบประมาณ (Fiscal Year Switcher)
- * - การ์ดตัวชี้วัดหลัก (Metric Cards): จำนวนบุคลากร, วันลาสะสมในปีงบประมาณ, วันลาในเดือนนี้, บุคลากรที่กำลังลาวันนี้
- * - รายชื่อบุคลากรที่ลาปฏิบัติงานวันนี้ (Today's Leaves)
- * - ประวัติการลาล่าสุด 5 รายการ (Recent Leaves) พร้อมปุ่มลบรายการ
- * - เมนูด่วนสำหรับส่งออกรายงานเป็น Excel / CSV
+ * แยกข้อมูลปีงบประมาณ 2569 และ 2570 ออกจากกันอย่างชัดเจน
  */
 export const DashboardView: React.FC<DashboardViewProps> = ({
   staffList,
@@ -67,16 +62,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayStr = useMemo(() => toDateString(new Date()), []);
   // แผนผัง Map ค้นหาข้อมูลบุคลากรจาก staffId (O(1))
   const staffMap = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList]);
-  
-  // ปีงบประมาณที่เลือก
+
+  // ปีงบประมาณที่เลือก (แยกชัดเจนรายปีงบประมาณ)
   const currentFiscalYear = getCurrentFiscalYear();
-  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : currentFiscalYear;
+  const activeFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : currentFiscalYear;
+
   // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
-  // คำนวณรายชื่อบุคลากรที่ลาปฏิบัติงานในวันนี้ (เปรียบเทียบกับช่วงวันที่เริ่ม-สิ้นสุดลา)
+  // คำนวณรายชื่อบุคลากรที่ลาปฏิบัติงานในวันนี้
   const leavesToday = useMemo(() => {
     return records
       .filter((r) => r.status !== 'rejected' && isDateInLeaveRange(todayStr, r))
@@ -87,12 +86,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }));
   }, [records, todayStr, staffMap]);
 
-  // กรองรายการลาที่อยู่ในปีงบประมาณที่เลือก
+  // กรองรายการลาที่อยู่ในปีงบประมาณที่เลือกเท่านั้น
   const recordsInFY = useMemo(() => {
     return records.filter(
       (r) =>
         r.status !== 'rejected' &&
-        (activeFiscalYear === 'all' || getFiscalYear(r.startDate) === activeFiscalYear)
+        getFiscalYear(r.startDate) === activeFiscalYear
     );
   }, [records, activeFiscalYear]);
 
@@ -101,33 +100,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return recordsInFY.reduce((sum, r) => sum + r.daysCount, 0);
   }, [recordsInFY]);
 
-  // กรองรายการลาที่อยู่ในเดือนปัจจุบัน
+  // กรองรายการลาที่อยู่ในเดือนปัจจุบัน (เฉพาะในปีงบประมาณที่เลือก)
   const currentMonthPrefix = todayStr.substring(0, 7); // รูปแบบ "YYYY-MM"
   const recordsThisMonth = useMemo(() => {
-    return records.filter(
+    return recordsInFY.filter(
       (r) =>
-        r.status !== 'rejected' &&
-        (r.startDate.startsWith(currentMonthPrefix) || r.endDate.startsWith(currentMonthPrefix))
+        r.startDate.startsWith(currentMonthPrefix) || r.endDate.startsWith(currentMonthPrefix)
     );
-  }, [records, currentMonthPrefix]);
+  }, [recordsInFY, currentMonthPrefix]);
 
   // ผลรวมจำนวนวันลาในเดือนปัจจุบัน
   const totalDaysThisMonth = useMemo(() => {
     return recordsThisMonth.reduce((sum, r) => sum + r.daysCount, 0);
   }, [recordsThisMonth]);
 
-  // รายการบันทึกการลาล่าสุด 5 รายการ (จัดเรียงตามเวลาที่สร้างล่าสุด)
+  // รายการบันทึกการลาล่าสุด 5 รายการในปีงบประมาณที่เลือก
   const recentRecords = useMemo(() => {
-    return [...records]
-      .filter(
-        (r) =>
-          activeFiscalYear === 'all' || getFiscalYear(r.startDate) === activeFiscalYear
-      )
+    return [...recordsInFY]
       .sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime())
       .slice(0, 5);
-  }, [records, activeFiscalYear]);
+  }, [recordsInFY]);
 
-  // สรุปสถิติวันลาของบุคลากรสำหรับปุ่มส่งออก Excel / CSV
+  // สรุปสถิติวันลาของบุคลากรสำหรับปุ่มส่งออก Excel / CSV (เฉพาะปีงบประมาณที่เลือก)
   const staffSummaries = useMemo(() => {
     return calculateStaffSummaries(staffList, records, activeFiscalYear);
   }, [staffList, records, activeFiscalYear]);
@@ -168,22 +162,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => onSelectFiscalYear?.('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeFiscalYear === 'all'
-                    ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-300/40'
-                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                ทั้งหมด
-              </button>
             </div>
           </div>
           <h2 className="text-2xl font-bold tracking-tight">ภาพรวมข้อมูลการลาบุคลากร</h2>
           <p className="text-xs sm:text-sm text-indigo-200 mt-1">
-            วันนี้ {formatThaiDateShort(todayStr)} • {activeFiscalYear !== 'all' ? formatFiscalYearLabel(activeFiscalYear, true) : 'แสดงรวมทุกปีงบประมาณ'}
+            วันนี้ {formatThaiDateShort(todayStr)} • {formatFiscalYearLabel(activeFiscalYear, true)}
           </p>
         </div>
 
@@ -211,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               title="ส่งออกรายงานสรุปวันลาคงเหลือ"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>Export to Excel/CSV</span>
+              <span>Export (ปีงบฯ {activeFiscalYear})</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
@@ -223,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
-                    ดาวน์โหลดรายงานสรุปวันลาคงเหลือ
+                    ดาวน์โหลดรายงานปีงบประมาณ {activeFiscalYear}
                   </div>
                   <button
                     onClick={() => {
@@ -235,7 +218,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <div>
                       <div>Export to Excel (.xlsx)</div>
-                      <div className="text-[10px] font-normal text-slate-400 dark:text-slate-500">สรุปวันลาคงเหลือทุกคน</div>
+                      <div className="text-[10px] font-normal text-slate-400 dark:text-slate-500">สรุปวันลาคงเหลือ ปีงบฯ {activeFiscalYear}</div>
                     </div>
                   </button>
                   <button
@@ -315,7 +298,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {activeFiscalYear === 'all' ? 'การลาทั้งหมด' : `การลาในปีงบฯ ${activeFiscalYear}`}
+              การลาในปีงบประมาณ {activeFiscalYear}
             </span>
             <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Clock className="w-5 h-5" />
@@ -327,7 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center justify-between">
             <span>เดือนนี้: {totalDaysThisMonth} วัน</span>
-            <span>ดูประวัติทั้งหมด →</span>
+            <span>ดูประวัติปีงบฯ {activeFiscalYear} →</span>
           </p>
         </div>
       </div>
@@ -412,17 +395,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Recent Records Table */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">รายการบันทึกล่าสุด</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  รายการบันทึกล่าสุด
+                </h3>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  ปีงบฯ {activeFiscalYear}
+                </span>
+              </div>
               <button
                 onClick={() => onNavigateTab('records')}
                 className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
               >
-                <span>ดูทั้งหมด ({records.length})</span> →
+                <span>ดูทั้งหมดในปีงบฯ {activeFiscalYear} ({recordsInFY.length})</span> →
               </button>
             </div>
 
             {recentRecords.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">ยังไม่มีประวัติการลา</div>
+              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                ยังไม่มีประวัติการลาในปีงบประมาณ {activeFiscalYear}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -519,7 +511,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <span className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  เปิดดูปฏิทินวันลา
+                  เปิดดูปฏิทินวันลา (ปีงบฯ {activeFiscalYear})
                 </span>
                 <span>→</span>
               </button>
@@ -529,7 +521,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  ตรวจสอบสรุปวันลาคงเหลือ
+                  ตรวจสอบสรุปวันลาคงเหลือ (ปีงบฯ {activeFiscalYear})
                 </span>
                 <span>→</span>
               </button>
@@ -550,10 +542,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 dark:from-slate-900 dark:to-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 p-5">
             <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span>รายงานและการส่งออก</span>
-              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md font-semibold">Summary</span>
+              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md font-semibold">
+                ปีงบฯ {activeFiscalYear}
+              </span>
             </h4>
             <p className="text-xs text-slate-600 dark:text-slate-300 mb-3.5 leading-relaxed">
-              ดาวน์โหลดสรุปวันลาคงเหลือของบุคลากรทุกคนเพื่อพิมพ์ ตรวจสอบ หรือประมวลผลต่อ
+              ดาวน์โหลดสรุปวันลาคงเหลือของบุคลากรทุกคนประจำปีงบประมาณ {activeFiscalYear}
             </p>
 
             <div className="space-y-2">

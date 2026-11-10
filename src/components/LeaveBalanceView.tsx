@@ -7,11 +7,17 @@ import {
   ShieldAlert,
   ShieldCheck,
   PieChart,
+  X,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
-import { WORK_GROUPS } from '../utils/constants';
+import { WORK_GROUPS, LEAVE_TYPE_MAP } from '../utils/constants';
 import { calculateStaffSummaries, exportSummaryToExcel, exportSummaryToCsv } from '../utils/storage';
-import { getFiscalYear, getCurrentFiscalYear } from '../utils/dateUtils';
+import {
+  getFiscalYear,
+  getCurrentFiscalYear,
+  formatFiscalYearLabel,
+  formatThaiDateFull,
+} from '../utils/dateUtils';
 
 /**
  * โครงสร้าง Props ของหน้าจอสรุปยอดวันลาคงเหลือ (LeaveBalanceView)
@@ -19,6 +25,7 @@ import { getFiscalYear, getCurrentFiscalYear } from '../utils/dateUtils';
 interface LeaveBalanceViewProps {
   staffList: Staff[];                                         // รายชื่อบุคลากรทั้งหมด
   records: LeaveRecord[];                                     // รายการประวัติการลาทั้งหมด
+  onOpenPrintLeave?: (record: LeaveRecord) => void;           // เปิด Modal พิมพ์ใบลา
   selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกจาก Navbar หรือ State ส่วนกลาง
   availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
   onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
@@ -26,32 +33,27 @@ interface LeaveBalanceViewProps {
 
 /**
  * คอมโพเนนต์หน้าจอสรุปยอดวันลาคงเหลือและสถิติ (LeaveBalanceView)
- * ประกอบด้วย:
- * - ตัวกรองสลับปีงบประมาณ (Fiscal Year Switcher)
- * - การ์ดสถิติภาพรวม: โควตารวมทั้งหมด, วันลาที่ใช้ไปรวม, วันลาคงเหลือรวม
- * - ตารางตรวจสอบสิทธิ์วันลาของบุคลากรทุกคน แยกประเภทการลาอย่างละเอียด:
- *   - วันลาพักผ่อนสะสมยกมา (carriedOverVacationDays)
- *   - ลาป่วย (ใช้ / โควตา / คงเหลือ)
- *   - ลากิจส่วนตัว (ใช้ / โควตา / คงเหลือ)
- *   - ลาพักผ่อน (ใช้ / โควตา / คงเหลือ)
- *   - ลาคลอดบุตร (ใช้ / โควตา / คงเหลือ)
- * - ปุ่มพิมพ์รายงาน (Print Friendly) และปุ่มส่งออกข้อมูลเป็น Excel (.xlsx) และ CSV (UTF-8 BOM)
+ * แยกข้อมูลปีงบประมาณ 2569 และ 2570 ออกจากกันอย่างชัดเจน
  */
 export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   staffList,
   records,
+  onOpenPrintLeave,
   selectedFiscalYear: selectedFiscalYearProp,
   availableFiscalYears: availableFiscalYearsProp,
   onSelectFiscalYear: onSelectFiscalYearProp,
 }) => {
   // ปีงบประมาณปัจจุบัน
   const currentFY = getCurrentFiscalYear();
-  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFY);
-  // ปีงบประมาณที่ใช้งานจริง
-  const selectedFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  const [localFiscalYear, setLocalFiscalYear] = useState<number>(currentFY);
+  // ปีงบประมาณที่ใช้งานจริง (แยกขาดรายปี ไม่นำมารวมกัน)
+  const selectedFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : localFiscalYear;
 
   // จัดการการเปลี่ยนปีงบประมาณ
-  const handleFiscalYearChange = (fy: number | 'all') => {
+  const handleFiscalYearChange = (fy: number) => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
     } else {
@@ -63,13 +65,13 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   // ตัวกรองกลุ่มงาน / ฝ่าย
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  // บุคลากรที่ถูกคลิกเพื่อดูรายการวันลาในปีงบประมาณที่เลือก
+  const [viewingStaff, setViewingStaff] = useState<Staff | null>(null);
 
   // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const fiscalYears = useMemo(() => {
     if (availableFiscalYearsProp) return availableFiscalYearsProp;
-    const years = new Set<number>();
-    years.add(currentFY);
-    years.add(currentFY - 1);
+    const years = new Set<number>([currentFY, 2570, 2569]);
     records.forEach((r) => {
       years.add(getFiscalYear(r.startDate));
     });
@@ -102,7 +104,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
     });
   }, [summaries, searchQuery, selectedDept]);
 
-  // คำนวณยอดรวมสถิติทั้งองค์กร (โควตารวมทั้งหมด, วันลาที่ใช้รวม, คงเหลือรวม)
+  // คำนวณยอดรวมสถิติทั้งองค์กรในปีงบประมาณที่เลือก
   const totals = useMemo(() => {
     let totalQuota = 0;
     let totalUsed = 0;
@@ -117,6 +119,19 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
     return { totalQuota, totalUsed, totalRemaining };
   }, [summaries]);
 
+  // รายการลาของบุคลากรที่คลิกเลือก (เฉพาะในปีงบประมาณที่เลือก)
+  const viewingStaffRecords = useMemo(() => {
+    if (!viewingStaff) return [];
+    return records
+      .filter(
+        (r) =>
+          r.staffId === viewingStaff.id &&
+          r.status !== 'rejected' &&
+          getFiscalYear(r.startDate) === selectedFiscalYear
+      )
+      .sort((a, b) => b.startDate.localeCompare(a.startDate));
+  }, [viewingStaff, records, selectedFiscalYear]);
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-5 animate-in fade-in duration-200 pr-1">
       {/* Header */}
@@ -124,12 +139,12 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">สรุปยอดวันลาคงเหลือและสถิติ</h2>
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              {selectedFiscalYear === 'all' ? 'ทุกปีงบประมาณ' : `ปีงบประมาณ ${selectedFiscalYear}`}
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {formatFiscalYearLabel(selectedFiscalYear, true)}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            รายงานตรวจสอบสิทธิ์วันลา โควตารวม วันที่ใช้ไป และวันลาคงเหลือของบุคลากรทุกคน
+            คลิกที่รายชื่อหรือจำนวนวันลาของบุคลากรเพื่อดูรายละเอียดวันที่ลาเฉพาะในปีงบประมาณ {selectedFiscalYear}
           </p>
         </div>
 
@@ -146,7 +161,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>ส่งออก Excel</span>
+            <span>ส่งออก Excel (ปีงบฯ {selectedFiscalYear})</span>
           </button>
           <button
             onClick={() => exportSummaryToCsv(summaries)}
@@ -162,7 +177,9 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">โควตารวมทั้งหมด</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+              โควตารวมทั้งหมด (ปีงบฯ {selectedFiscalYear})
+            </span>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400">
               <PieChart className="w-4 h-4" />
             </div>
@@ -176,7 +193,9 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">ใช้วันลาแล้วรวม</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+              ใช้วันลาแล้วรวม (ปีงบฯ {selectedFiscalYear})
+            </span>
             <div className="p-2 bg-amber-50 dark:bg-amber-950/60 rounded-xl text-amber-600 dark:text-amber-400">
               <ShieldAlert className="w-4 h-4" />
             </div>
@@ -185,12 +204,14 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
             <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totals.totalUsed}</span>
             <span className="text-xs text-slate-500 dark:text-slate-400">วัน</span>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">บันทึกการลาทั้งหมดในระบบ</p>
+          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">เฉพาะในปีงบประมาณ {selectedFiscalYear}</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">วันลาคงเหลือรวม</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+              วันลาคงเหลือรวม (ปีงบฯ {selectedFiscalYear})
+            </span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -206,6 +227,27 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
         <div className="flex flex-1 items-center gap-3 w-full sm:w-auto flex-wrap">
+          {/* Fiscal Year Pill Buttons */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+            {fiscalYears.map((fy) => {
+              const isSelected = selectedFiscalYear === fy;
+              return (
+                <button
+                  key={fy}
+                  type="button"
+                  onClick={() => handleFiscalYearChange(fy)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                  }`}
+                >
+                  ปีงบฯ {fy}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Search box */}
           <div className="relative flex-1 min-w-[180px] max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -218,29 +260,8 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
             />
           </div>
 
-          {/* Fiscal Year filter */}
-          <div className="w-48">
-            <select
-              value={selectedFiscalYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
-              }}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-            >
-              {fiscalYears.map((fy) => (
-                <option key={fy} value={fy} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-                  ปีงบประมาณ {fy} {fy === currentFY ? '(ปัจจุบัน)' : ''}
-                </option>
-              ))}
-              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-                ทุกปีงบประมาณ
-              </option>
-            </select>
-          </div>
-
           {/* Department filter */}
-          <div className="w-44">
+          <div className="w-48">
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
@@ -257,7 +278,7 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
         </div>
 
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          แสดง <b className="text-slate-800 dark:text-slate-200">{filteredSummaries.length}</b> คน
+          แสดง <b className="text-slate-800 dark:text-slate-200">{filteredSummaries.length}</b> คน (ปีงบฯ {selectedFiscalYear})
         </div>
       </div>
 
@@ -282,9 +303,9 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                 </th>
                 <th className="py-3 px-3 text-center bg-purple-50/40 dark:bg-purple-950/30 text-purple-800 dark:text-purple-300 border-r border-slate-100 dark:border-slate-800">
                   อื่นๆ <br />
-                  <span className="text-[10px] font-normal text-purple-600 dark:text-purple-400">ใช้ / คงเหลือ</span>
+                  <span className="text-[10px] font-normal text-purple-600 dark:text-purple-400">ใช้ไป</span>
                 </th>
-                <th className="py-3 px-4 text-center">รวมใช้ทั้งหมด</th>
+                <th className="py-3 px-4 text-center">รวมใช้ทั้งหมด (ปีงบฯ {selectedFiscalYear})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -307,7 +328,12 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                   (s.usedByType['other'] || 0);
 
                 return (
-                  <tr key={s.staff.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr
+                    key={s.staff.id}
+                    onClick={() => setViewingStaff(s.staff)}
+                    className="hover:bg-indigo-50/40 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                    title={`คลิกเพื่อดูรายละเอียดวันลาของ ${s.staff.name} ในปีงบประมาณ ${selectedFiscalYear}`}
+                  >
                     {/* Staff info */}
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900 dark:text-white">{s.staff.name}</div>
@@ -344,9 +370,9 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
                       <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
                         เหลือ {vacRemain} วัน
                       </div>
-                      {Boolean(s.staff.carriedOverVacationDays) && (
+                      {Boolean(s.carriedOverVacationDays) && (
                         <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-                          (สะสมยกมา {s.staff.carriedOverVacationDays} วัน)
+                          (สะสมยกมา {s.carriedOverVacationDays} วัน)
                         </div>
                       )}
                     </td>
@@ -369,6 +395,135 @@ export const LeaveBalanceView: React.FC<LeaveBalanceViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal: Staff Leave Details Filtered by Fiscal Year */}
+      {viewingStaff && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingStaff(null);
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-start justify-center p-4 pt-12 sm:pt-16 no-print"
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <span>ประวัติการลาของ {viewingStaff.name}</span>
+                  <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500 text-white">
+                    ปีงบประมาณ {selectedFiscalYear}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {viewingStaff.department} • {viewingStaff.position}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingStaff(null)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Fiscal Year Switcher inside Modal */}
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  เลือกดูตามปีงบประมาณ (แยกไม่ปนกัน):
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {fiscalYears.map((fy) => (
+                    <button
+                      key={fy}
+                      type="button"
+                      onClick={() => handleFiscalYearChange(fy)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        selectedFiscalYear === fy
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      ปีงบฯ {fy}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {viewingStaffRecords.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                  ไม่มีประวัติการลาของ <b>{viewingStaff.name}</b> ใน <b>ปีงบประมาณ {selectedFiscalYear}</b>
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                        <th className="py-2.5 px-3">ประเภทการลา</th>
+                        <th className="py-2.5 px-3">ช่วงวันที่ลา</th>
+                        <th className="py-2.5 px-3 text-center">จำนวนวัน</th>
+                        <th className="py-2.5 px-3">เหตุผล</th>
+                        <th className="py-2.5 px-3 text-right">พิมพ์ใบลา</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {viewingStaffRecords.map((r) => {
+                        const lt = LEAVE_TYPE_MAP.get(r.leaveTypeId);
+                        return (
+                          <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${lt?.color.badge || ''}`}>
+                                {lt?.name || r.leaveTypeId}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200">
+                              {formatThaiDateFull(r.startDate)}
+                              {r.startDate !== r.endDate && ` - ${formatThaiDateFull(r.endDate)}`}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                              {r.daysCount} วัน
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">
+                              {r.reason || '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {onOpenPrintLeave && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setViewingStaff(null);
+                                    onOpenPrintLeave(r);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[11px] cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span>พิมพ์</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs">
+                <span className="text-slate-500">
+                  รวมวันลาในปีงบประมาณ {selectedFiscalYear}: <b className="text-slate-900 dark:text-white">{viewingStaffRecords.reduce((s, r) => s + r.daysCount, 0)} วัน</b> ({viewingStaffRecords.length} รายการ)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setViewingStaff(null)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl cursor-pointer"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -39,7 +39,8 @@ export function formatThaiDateShort(dateStr: string): string {
   if (!dateStr) return '-';
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
-  const year = parseInt(parts[0], 10) + 543; // แปลง ค.ศ. เป็น พ.ศ.
+  let year = parseInt(parts[0], 10);
+  if (year < 2400) year += 543; // แปลง ค.ศ. เป็น พ.ศ.
   const monthIdx = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
   return `${day} ${THAI_MONTHS_SHORT[monthIdx] || ''} ${year}`;
@@ -53,7 +54,8 @@ export function formatThaiDateFull(dateStr: string): string {
   if (!dateStr) return '-';
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
-  const year = parseInt(parts[0], 10) + 543;
+  let year = parseInt(parts[0], 10);
+  if (year < 2400) year += 543;
   const monthIdx = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
   return `${day} ${THAI_MONTHS_FULL[monthIdx] || ''} ${year}`;
@@ -75,7 +77,9 @@ export function getThaiDateParts(dateStr?: string): { day: string; month: string
   if (parts.length !== 3) {
     return { day: '-', month: '-', yearBE: '-' };
   }
-  const yearBE = String(parseInt(parts[0], 10) + 543);
+  let year = parseInt(parts[0], 10);
+  if (year < 2400) year += 543;
+  const yearBE = String(year);
   const monthIdx = parseInt(parts[1], 10) - 1;
   const month = THAI_MONTHS_FULL[monthIdx] || '-';
   const day = String(parseInt(parts[2], 10));
@@ -248,9 +252,12 @@ export function isDateInLeaveRange(
  */
 export function getFiscalYear(dateStr: string): number {
   if (!dateStr) return getCurrentFiscalYear();
-  const parts = dateStr.split('-');
-  const year = parseInt(parts[0], 10);
+  const parts = dateStr.trim().split('-');
+  let year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10);
+  if (year > 2400) {
+    year -= 543;
+  }
   return month >= 10 ? year + 544 : year + 543;
 }
 

@@ -30,7 +30,7 @@ import { getCurrentFiscalYear, getAvailableFiscalYears } from './utils/dateUtils
  * คอมโพเนนต์หลักของระบบ (App Component)
  * ทำหน้าที่บริหารจัดการ State ส่วนกลางของแอปพลิเคชัน:
  * - สิทธิ์ผู้ใช้งาน (UserRole: 'admin' หรือ 'staff')
- * - ปีงบประมาณที่เลือกแสดงผล (Fiscal Year: พ.ศ. 2570, 2569, หรือ 'all')
+ * - ปีงบประมาณที่เลือกแสดงผล (Fiscal Year: แยกขาดระหว่าง พ.ศ. 2570 และ 2569 ไม่ปนกัน)
  * - แท็บเมนูที่กำลังเปิด (ActiveTab)
  * - รายชื่อบุคลากร (StaffList) และประวัติการลา (Records)
  * - ธีมสี (Light / Dark Mode)
@@ -44,9 +44,17 @@ export const App: React.FC = () => {
   // สถานะเปิด/ปิด Modal เข้าสู่ระบบผู้ดูแลระบบ
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
-  // สถานะปีงบประมาณ พ.ศ. (เช่น 2570, 2569 หรือ 'all' สำหรับดูทั้งหมด)
+  // สถานะปีงบประมาณ พ.ศ. (แยกชัดเจนรายปีงบประมาณ เช่น 2570 หรือ 2569 เพื่อไม่ให้วันลาปนกัน)
   const currentFiscalYear = getCurrentFiscalYear();
-  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | 'all'>(currentFiscalYear);
+  const [selectedFiscalYear, setSelectedFiscalYearState] = useState<number>(currentFiscalYear);
+
+  const handleSelectFiscalYear = (fy: number | 'all') => {
+    if (fy === 'all') {
+      setSelectedFiscalYearState(currentFiscalYear);
+    } else {
+      setSelectedFiscalYearState(fy);
+    }
+  };
 
   // แท็บเมนูเริ่มต้น: หากเป็นแอดมินเปิดหน้าภาพรวม (Dashboard), หากเป็นเจ้าหน้าที่เปิดหน้าปฏิทิน (Calendar)
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
@@ -58,7 +66,7 @@ export const App: React.FC = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [records, setRecords] = useState<LeaveRecord[]>([]);
 
-  // คำนวณรายการปีงบประมาณที่มีข้อมูลจริงในระบบแบบไดนามิก (สำหรับ Dropdown สลับปีงบประมาณ)
+  // คำนวณรายการปีงบประมาณที่มีข้อมูลจริงในระบบแบบไดนามิก (สำหรับสลับปีงบประมาณ)
   const availableFiscalYears = useMemo(() => {
     return getAvailableFiscalYears(records);
   }, [records]);
@@ -292,7 +300,7 @@ export const App: React.FC = () => {
         onSelectStaff={handleSelectStaff}
         selectedFiscalYear={selectedFiscalYear}
         availableFiscalYears={availableFiscalYears}
-        onSelectFiscalYear={setSelectedFiscalYear}
+        onSelectFiscalYear={handleSelectFiscalYear}
       />
 
       {/* Main Content Area */}
@@ -309,7 +317,7 @@ export const App: React.FC = () => {
             onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
-            onSelectFiscalYear={setSelectedFiscalYear}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
 
@@ -322,7 +330,7 @@ export const App: React.FC = () => {
             onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
-            onSelectFiscalYear={setSelectedFiscalYear}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
 
@@ -334,6 +342,10 @@ export const App: React.FC = () => {
             onEditStaff={handleEditStaff}
             onDeleteStaff={handleDeleteStaff}
             onUpdateStaffList={setStaffList}
+            onOpenPrintLeave={setPrintingRecord}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
 
@@ -341,9 +353,10 @@ export const App: React.FC = () => {
           <LeaveBalanceView
             staffList={staffList}
             records={records}
+            onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
-            onSelectFiscalYear={setSelectedFiscalYear}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
 
@@ -358,6 +371,9 @@ export const App: React.FC = () => {
             isAdmin={isAdmin}
             selectedStaffId={myStaffId}
             onSelectStaff={handleSelectStaff}
+            selectedFiscalYear={selectedFiscalYear}
+            availableFiscalYears={availableFiscalYears}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
 
@@ -371,7 +387,7 @@ export const App: React.FC = () => {
             onOpenPrintLeave={setPrintingRecord}
             selectedFiscalYear={selectedFiscalYear}
             availableFiscalYears={availableFiscalYears}
-            onSelectFiscalYear={setSelectedFiscalYear}
+            onSelectFiscalYear={handleSelectFiscalYear}
           />
         )}
       </main>

@@ -14,10 +14,14 @@ import {
   Undo2,
   Sparkles,
   X,
+  Calendar,
+  Printer,
+  FileText,
 } from 'lucide-react';
 import type { Staff, LeaveRecord } from '../types';
 import {
   LEAVE_TYPES,
+  LEAVE_TYPE_MAP,
   WORK_GROUPS,
   getWorkGroupColor,
 } from '../utils/constants';
@@ -26,7 +30,13 @@ import {
   rolloverFiscalYear,
   resetCarriedOverVacationDays,
 } from '../utils/storage';
-import { getCurrentFiscalYear } from '../utils/dateUtils';
+import {
+  getCurrentFiscalYear,
+  getFiscalYear,
+  getAvailableFiscalYears,
+  formatThaiDateFull,
+  formatFiscalYearLabel,
+} from '../utils/dateUtils';
 
 /**
  * โครงสร้าง Props ของหน้าจอจัดการบุคลากร (StaffManagementView)
@@ -38,16 +48,14 @@ interface StaffManagementViewProps {
   onEditStaff: (staff: Staff) => void;                        // เปิด Modal แก้ไขข้อมูลบุคลากร
   onDeleteStaff: (staffId: string) => void;                   // ลบบุคลากร
   onUpdateStaffList?: (staffList: Staff[]) => void;           // Callback เมื่อรายชื่อบุคลากรได้รับการอัปเดต (เช่น หลัง Rollover)
+  onOpenPrintLeave?: (record: LeaveRecord) => void;           // เปิด Modal พิมพ์ใบลา
+  selectedFiscalYear?: number | 'all';                       // ปีงบประมาณที่เลือกแสดงผล
+  availableFiscalYears?: number[];                            // รายการปีงบประมาณที่มีข้อมูล
+  onSelectFiscalYear?: (fy: number | 'all') => void;          // ฟังก์ชันสลับปีงบประมาณ
 }
 
 /**
  * คอมโพเนนต์หน้าจอจัดการรายชื่อบุคลากรและโควตาวันลา (StaffManagementView)
- * ประกอบด้วย:
- * - ตัวจัดกลุ่มบุคลากรตามฝ่าย / กลุ่มงาน (Accordion ที่เปิดได้ทีละ 1 กลุ่มงาน)
- * - ช่องค้นหาชื่อ, ตำแหน่ง หรือกลุ่มงาน
- * - ปุ่มและ Modal สำหรับปรับรอบปีงบประมาณใหม่ (Rollover Fiscal Year) ตามระเบียบราชการ
- * - ปุ่มย้อนกลับวันลาพักผ่อนสะสมยกมา (Revert Carried-over Days) กรณีเผลอกดปรับย้อนซ้ำ
- * - ฟังก์ชันเพิ่ม, แก้ไข และลบบุคลากร
  */
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   staffList,
@@ -56,6 +64,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onEditStaff,
   onDeleteStaff,
   onUpdateStaffList,
+  onOpenPrintLeave,
+  selectedFiscalYear: selectedFiscalYearProp,
+  availableFiscalYears: availableFiscalYearsProp,
+  onSelectFiscalYear,
 }) => {
   // ข้อความค้นหา
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,11 +77,23 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
   // กลุ่มงานที่กำลังเปิดดูข้อมูล (เปิดได้ทีละกลุ่มงานเพื่อความเรียบร้อย)
   const [openDept, setOpenDept] = useState<string | null>(null);
+  // บุคลากรที่ถูกคลิกเพื่อดูรายละเอียดวันลาแยกตามปีงบประมาณ
+  const [viewingStaff, setViewingStaff] = useState<Staff | null>(null);
 
-  // คำนวณสรุปยอดวันลาเพื่อดูสถิติการใช้วันลาของแต่ละคน
+  const currentFiscalYear = getCurrentFiscalYear();
+  const activeFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : currentFiscalYear;
+
+  const availableFiscalYearsList = useMemo(() => {
+    return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
+  }, [availableFiscalYearsProp, records]);
+
+  // คำนวณสรุปยอดวันลาเพื่อดูสถิติการใช้วันลาของแต่ละคน แยกตามปีงบประมาณที่เลือกอย่างชัดเจน
   const summaries = useMemo(() => {
-    return calculateStaffSummaries(staffList, records);
-  }, [staffList, records]);
+    return calculateStaffSummaries(staffList, records, activeFiscalYear);
+  }, [staffList, records, activeFiscalYear]);
 
   // แผนผัง Map ค้นหาสรุปยอดวันลาตาม staffId
   const summaryMap = useMemo(() => {
@@ -130,6 +154,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     return groups;
   }, [filteredStaff, staffList, summaryMap]);
 
+  // ประวัติการลาของบุคลากรที่คลิกเลือกดู (กรองเฉพาะปีงบประมาณที่เลือก)
+  const viewingStaffRecords = useMemo(() => {
+    if (!viewingStaff) return [];
+    return records
+      .filter(
+        (r) =>
+          r.staffId === viewingStaff.id &&
+          r.status !== 'rejected' &&
+          getFiscalYear(r.startDate) === activeFiscalYear
+      )
+      .sort((a, b) => b.startDate.localeCompare(a.startDate));
+  }, [viewingStaff, records, activeFiscalYear]);
+
   // เปิดกลุ่มงานอัตโนมัติหากผู้ใช้เลือกตัวกรองกลุ่มงาน
   useEffect(() => {
     if (selectedDept !== 'all') {
@@ -155,8 +192,6 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const collapseAll = () => {
     setOpenDept(null);
   };
-
-  const currentFiscalYear = getCurrentFiscalYear();
 
   // ดำเนินการปรับรอบปีงบประมาณใหม่ตามระเบียบข้าราชการ (คำนวณวันลาสะสมยกมาที่ถูกต้อง)
   const handleApplyCorrectRollover = () => {
@@ -192,23 +227,48 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">จัดการข้อมูลบุคลากรและโควตาวันลา</h2>
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              ปีงบประมาณ {currentFiscalYear}
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {formatFiscalYearLabel(activeFiscalYear, true)}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            แบ่งกลุ่มงานตามโครงสร้างสำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน พร้อมแสดงผลแบบแถวแนวนอน
+            คลิกที่แถบจำนวนวันลาของบุคลากรเพื่อดูประวัติการลาแยกตามปีงบประมาณ ({activeFiscalYear})
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Fiscal Year Switcher */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>ปีงบฯ:</span>
+            </span>
+            {availableFiscalYearsList.map((fy) => {
+              const isSelected = activeFiscalYear === fy;
+              return (
+                <button
+                  key={fy}
+                  type="button"
+                  onClick={() => onSelectFiscalYear?.(fy)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {fy}
+                </button>
+              );
+            })}
+          </div>
+
           <button
             onClick={() => setIsRolloverModalOpen(true)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
             title="ปรับยอดโควตารับปีงบประมาณใหม่ หรือย้อนกลับแก้ไขวันลาสะสมยกมา"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>จัดการโควตาปีงบประมาณ {currentFiscalYear}</span>
+            <span>จัดการโควตาปีงบฯ {currentFiscalYear}</span>
           </button>
           <button
             onClick={onOpenNewStaff}
@@ -255,7 +315,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         {/* View Controls & Stats */}
         <div className="flex items-center justify-between w-full md:w-auto gap-3 text-xs">
           <span className="text-slate-500 dark:text-slate-400">
-            แสดง <b className="text-slate-800 dark:text-slate-200">{filteredStaff.length}</b> คน ({groupedStaff.length} กลุ่มงาน)
+            แสดง <b className="text-slate-800 dark:text-slate-200">{filteredStaff.length}</b> คน ({groupedStaff.length} กลุ่มงาน • ปีงบฯ {activeFiscalYear})
           </span>
 
           <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-3">
@@ -318,7 +378,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                         {group.dept}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        บุคลากร {group.staff.length} คน • ลารวม {group.totalUsed} วัน
+                        บุคลากร {group.staff.length} คน • ลารวมในปีงบฯ {activeFiscalYear}: <b>{group.totalUsed}</b> วัน
                       </p>
                     </div>
                   </div>
@@ -346,6 +406,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       const summary = summaryMap.get(staff.id);
                       const totalUsed = summary?.totalUsed || 0;
                       const totalRemaining = summary?.totalRemaining || 0;
+                      const effectiveCarry = summary?.carriedOverVacationDays || 0;
 
                       return (
                         <div
@@ -369,48 +430,55 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                             </div>
                           </div>
 
-                          {/* Col 2: Leave Quotas (Horizontal compact pills) */}
+                          {/* Col 2: Leave Quotas (Horizontal compact pills - Clickable to view FY records) */}
                           <div className="flex items-center gap-2 flex-wrap">
                             {LEAVE_TYPES.slice(0, 3).map((type) => {
                               const quota = summary?.quotas[type.id] ?? type.defaultQuota;
                               const remain = summary?.remainingByType[type.id] ?? quota;
                               const used = summary?.usedByType[type.id] ?? 0;
                               return (
-                                  <div
-                                    key={type.id}
-                                    className="bg-slate-50 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center min-w-[80px]"
-                                    title={`${type.name}: สิทธิ์รวม ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน${
-                                      type.id === 'vacation' && staff.carriedOverVacationDays
-                                        ? ` (สะสมยกมา ${staff.carriedOverVacationDays} วัน)`
-                                        : ''
-                                    }`}
-                                  >
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1">
-                                      <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
-                                      <span>{type.shortName}</span>
-                                      {type.id === 'vacation' && Boolean(staff.carriedOverVacationDays) && (
-                                        <span
-                                          className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5"
-                                          title={`สะสมยกมา ${staff.carriedOverVacationDays} วัน`}
-                                        >
-                                          +{staff.carriedOverVacationDays}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                                      <span className="text-emerald-700 dark:text-emerald-400">{remain}</span>
-                                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">/{quota}</span>
-                                    </div>
+                                <button
+                                  key={type.id}
+                                  type="button"
+                                  onClick={() => setViewingStaff(staff)}
+                                  className="bg-slate-50 hover:bg-indigo-50/60 dark:bg-slate-800/80 dark:hover:bg-indigo-950/40 px-3 py-1.5 rounded-xl border border-slate-200/80 hover:border-indigo-300 dark:border-slate-700 dark:hover:border-indigo-700 text-center min-w-[84px] transition-all cursor-pointer"
+                                  title={`คลิกเพื่อดูรายละเอียดวันลาปีงบฯ ${activeFiscalYear} • ${type.name}: สิทธิ์รวม ${quota} วัน, ใช้ไป ${used} วัน, คงเหลือ ${remain} วัน${
+                                    type.id === 'vacation' && effectiveCarry > 0
+                                      ? ` (สะสมยกมา ${effectiveCarry} วัน)`
+                                      : ''
+                                  }`}
+                                >
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${type.color.dot}`} />
+                                    <span>{type.shortName}</span>
+                                    {type.id === 'vacation' && effectiveCarry > 0 && (
+                                      <span
+                                        className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5"
+                                        title={`สะสมยกมา ${effectiveCarry} วัน`}
+                                      >
+                                        +{effectiveCarry}
+                                      </span>
+                                    )}
                                   </div>
-                                );
-                              })}
+                                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                    <span className="text-emerald-700 dark:text-emerald-400">{remain}</span>
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">/{quota}</span>
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
 
                           {/* Col 3: Usage Totals */}
                           <div className="flex items-center gap-2.5 text-xs">
-                            <div className="text-slate-500 dark:text-slate-400">
-                              ใช้ไป: <b className="text-slate-800 dark:text-slate-200">{totalUsed}</b> วัน
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setViewingStaff(staff)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-200 hover:text-indigo-700 dark:hover:text-indigo-300 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                              title={`คลิกเพื่อดูรายการวันลาในปีงบประมาณ ${activeFiscalYear}`}
+                            >
+                              ใช้ไปปีงบฯ {activeFiscalYear}: <b>{totalUsed}</b> วัน
+                            </button>
                             <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg font-semibold shadow-2xs">
                               คงเหลือรวม {totalRemaining} วัน
                             </div>
@@ -418,6 +486,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                           {/* Col 4: Actions */}
                           <div className="flex items-center gap-1.5 shrink-0 self-end xl:self-center">
+                            <button
+                              onClick={() => setViewingStaff(staff)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-all cursor-pointer"
+                              title={`ดูประวัติวันลาในปีงบประมาณ ${activeFiscalYear}`}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>ดูวันลา ({totalUsed})</span>
+                            </button>
                             <button
                               onClick={() => onEditStaff(staff)}
                               className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-all cursor-pointer"
@@ -450,6 +526,135 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal: Staff Leave Details Filtered by Fiscal Year */}
+      {viewingStaff && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingStaff(null);
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-start justify-center p-4 pt-12 sm:pt-16"
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <span>ประวัติการลาของ {viewingStaff.name}</span>
+                  <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500 text-white">
+                    ปีงบประมาณ {activeFiscalYear}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {viewingStaff.department} • {viewingStaff.position}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingStaff(null)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Fiscal Year Switcher inside Modal */}
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  เลือกดูตามปีงบประมาณ (แยกไม่ปนกัน):
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {availableFiscalYearsList.map((fy) => (
+                    <button
+                      key={fy}
+                      type="button"
+                      onClick={() => onSelectFiscalYear?.(fy)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeFiscalYear === fy
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      ปีงบฯ {fy}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {viewingStaffRecords.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                  ไม่มีประวัติการลาของ <b>{viewingStaff.name}</b> ใน <b>ปีงบประมาณ {activeFiscalYear}</b>
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                        <th className="py-2.5 px-3">ประเภทการลา</th>
+                        <th className="py-2.5 px-3">ช่วงวันที่ลา</th>
+                        <th className="py-2.5 px-3 text-center">จำนวนวัน</th>
+                        <th className="py-2.5 px-3">เหตุผล</th>
+                        <th className="py-2.5 px-3 text-right">พิมพ์ใบลา</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {viewingStaffRecords.map((r) => {
+                        const lt = LEAVE_TYPE_MAP.get(r.leaveTypeId);
+                        return (
+                          <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${lt?.color.badge || ''}`}>
+                                {lt?.name || r.leaveTypeId}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200">
+                              {formatThaiDateFull(r.startDate)}
+                              {r.startDate !== r.endDate && ` - ${formatThaiDateFull(r.endDate)}`}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                              {r.daysCount} วัน
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">
+                              {r.reason || '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {onOpenPrintLeave && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setViewingStaff(null);
+                                    onOpenPrintLeave(r);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[11px] cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span>พิมพ์</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs">
+                <span className="text-slate-500">
+                  รวมวันลาในปีงบประมาณ {activeFiscalYear}: <b className="text-slate-900 dark:text-white">{viewingStaffRecords.reduce((s, r) => s + r.daysCount, 0)} วัน</b> ({viewingStaffRecords.length} รายการ)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setViewingStaff(null)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl cursor-pointer"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

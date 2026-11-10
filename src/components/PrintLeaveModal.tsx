@@ -54,6 +54,17 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
   const startDateThai = useMemo(() => (record ? formatThaiDateFull(record.startDate) : ''), [record]);
   const endDateThai = useMemo(() => (record ? formatThaiDateFull(record.endDate) : ''), [record]);
 
+  // ปีงบประมาณของใบลานี้
+  const recordFiscalYear = useMemo(() => {
+    return record ? getFiscalYear(record.startDate) : 2570;
+  }, [record]);
+
+  // วันลาพักผ่อนสะสมยกมา (เฉพาะปีงบประมาณ 2570 เป็นต้นไป ไม่นำมาปนกับปีงบประมาณ 2569)
+  const effectiveCarriedOver = useMemo(() => {
+    if (!staff || recordFiscalYear < 2570) return 0;
+    return staff.carriedOverVacationDays || 0;
+  }, [staff, recordFiscalYear]);
+
   // คำนวณสถิติวันลาสะสมในรอบปีงบประมาณเดียวกันก่อนถึงใบลานี้
   const leaveStats = useMemo(() => {
     if (!record || !staff) {
@@ -69,7 +80,7 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
     const priorRecords = records.filter((r) => {
       if (r.staffId !== staff.id || r.status === 'rejected') return false;
       if (getFiscalYear(r.startDate) !== targetFY) return false;
-      // บันทึกที่เกิดขึ้นก่อนหน้านี้
+      // บันทึกที่เกิดขึ้นก่อนหน้านี้ในปีงบประมาณเดียวกัน
       if (r.id === record.id) return false;
       if (r.startDate < record.startDate) return true;
       if (r.startDate === record.startDate && r.createdAt < record.createdAt) return true;
@@ -94,12 +105,14 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
     };
   }, [record, staff, records]);
 
-  // ค้นหาประวัติการลาประเภทเดียวกัน "ครั้งสุดท้าย" ก่อนหน้านี้
+  // ค้นหาประวัติการลาประเภทเดียวกัน "ครั้งสุดท้าย" ก่อนหน้านี้ (เฉพาะในปีงบประมาณเดียวกันเท่านั้น)
   const lastLeaveRecord = useMemo(() => {
     if (!record || !staff) return null;
+    const targetFY = getFiscalYear(record.startDate);
     const priorSameType = records
       .filter((r) => {
         if (r.staffId !== staff.id || r.status === 'rejected') return false;
+        if (getFiscalYear(r.startDate) !== targetFY) return false;
         if (r.leaveTypeId !== record.leaveTypeId) return false;
         if (r.id === record.id) return false;
         return r.startDate < record.startDate;
@@ -128,9 +141,14 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                ตัวอย่างพิมพ์ใบลา: {isVacation ? 'ใบลาพักผ่อน' : 'แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร'}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  ตัวอย่างพิมพ์ใบลา: {isVacation ? 'ใบลาพักผ่อน' : 'แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร'}
+                </h3>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  ปีงบประมาณ {recordFiscalYear}
+                </span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {staff.name} • {staff.department} ({staff.position})
               </p>
@@ -263,14 +281,14 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
 
               {/* Body Paragraph */}
               <div className="indent-10 text-justify leading-loose pt-1">
-                ข้าพเจ้า <span className="font-bold">{staff.name}</span> ตำแหน่ง <span className="font-bold">{staff.position}</span> สังกัด <span className="font-bold">สำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน</span> มีวันลาพักผ่อนสะสม <span className="font-bold">{staff.carriedOverVacationDays || 0}</span> วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก <span className="font-bold">10</span> วันทำการ รวมเป็น <span className="font-bold">{(staff.carriedOverVacationDays || 0) + 10}</span> วันทำการ ขอลาพักผ่อน ตั้งแต่วันที่ <span className="font-bold">{startDateThai}</span> ถึงวันที่ <span className="font-bold">{endDateThai}</span> มีกำหนด <span className="font-bold">{record.daysCount}</span> วัน ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <span className="underline decoration-dotted">{contactAddress}</span>
+                ข้าพเจ้า <span className="font-bold">{staff.name}</span> ตำแหน่ง <span className="font-bold">{staff.position}</span> สังกัด <span className="font-bold">สำนักงานสหกรณ์จังหวัดแม่ฮ่องสอน</span> มีวันลาพักผ่อนสะสม <span className="font-bold">{effectiveCarriedOver}</span> วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก <span className="font-bold">10</span> วันทำการ รวมเป็น <span className="font-bold">{effectiveCarriedOver + 10}</span> วันทำการ ขอลาพักผ่อน ตั้งแต่วันที่ <span className="font-bold">{startDateThai}</span> ถึงวันที่ <span className="font-bold">{endDateThai}</span> มีกำหนด <span className="font-bold">{record.daysCount}</span> วัน ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <span className="underline decoration-dotted">{contactAddress}</span>
               </div>
 
               {/* Middle Section: Stats Table (Left) + Salutation & Supervisor (Right) */}
               <div className="grid grid-cols-2 gap-6 pt-4">
                 {/* Left: Vacation Leave Stats */}
                 <div className="space-y-3">
-                  <div className="font-bold text-center text-xs">สถิติการลาในปีงบประมาณนี้</div>
+                  <div className="font-bold text-center text-xs">สถิติการลาในปีงบประมาณนี้ (พ.ศ. {recordFiscalYear})</div>
                   <table className="w-full border-collapse border border-slate-800 text-center text-xs">
                     <thead>
                       <tr className="bg-slate-100">
@@ -438,7 +456,7 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
                   <span className="inline-flex items-center gap-1 mx-2">
                     <span className="w-3.5 h-3.5 border border-slate-800 inline-block text-center text-[10px] leading-3">{lastLeaveRecord?.leaveTypeId === 'maternity' ? '✓' : ''}</span> คลอดบุตร
                   </span>
-                  ครั้งสุดท้าย
+                  ครั้งสุดท้าย (ในปีงบประมาณ {recordFiscalYear})
                 </div>
                 <div>
                   ตั้งแต่วันที่ <span className="font-medium underline decoration-dotted">{lastLeaveRecord ? formatThaiDateFull(lastLeaveRecord.startDate) : '-'}</span> ถึงวันที่ <span className="font-medium underline decoration-dotted">{lastLeaveRecord ? formatThaiDateFull(lastLeaveRecord.endDate) : '-'}</span> มีกำหนด <span className="font-medium underline decoration-dotted">{lastLeaveRecord ? `${lastLeaveRecord.daysCount} วัน` : '- วัน'}</span>
@@ -461,7 +479,7 @@ export const PrintLeaveModal: React.FC<PrintLeaveModalProps> = ({
               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-300">
                 {/* Left: Stats Table for 3 leave types */}
                 <div className="space-y-3">
-                  <div className="font-bold text-center text-xs">สถิติการลาในปีงบประมาณนี้</div>
+                  <div className="font-bold text-center text-xs">สถิติการลาในปีงบประมาณนี้ (พ.ศ. {recordFiscalYear})</div>
                   <table className="w-full border-collapse border border-slate-800 text-center text-xs">
                     <thead>
                       <tr className="bg-slate-100">

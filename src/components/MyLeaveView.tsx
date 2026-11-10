@@ -15,7 +15,13 @@ import {
 import type { Staff, LeaveRecord } from '../types';
 import { LEAVE_TYPES, LEAVE_TYPE_MAP } from '../utils/constants';
 import { calculateStaffSummaries } from '../utils/storage';
-import { formatThaiDateFull, getCurrentFiscalYear, getFiscalYear, getAvailableFiscalYears, formatFiscalYearLabel } from '../utils/dateUtils';
+import {
+  formatThaiDateFull,
+  getCurrentFiscalYear,
+  getFiscalYear,
+  getAvailableFiscalYears,
+  formatFiscalYearLabel,
+} from '../utils/dateUtils';
 
 /**
  * โครงสร้าง Props ของหน้าจอข้อมูลวันลาของฉัน (MyLeaveView)
@@ -33,11 +39,7 @@ interface MyLeaveViewProps {
 
 /**
  * คอมโพเนนต์หน้าจอข้อมูลวันลาส่วนตัว (MyLeaveView)
- * ประกอบด้วย:
- * - ตัวเลือกบุคลากร (กรณีที่ยังไม่ได้เลือกบุคคล)
- * - สวิตช์สลับปีงบประมาณ (Fiscal Year Switcher) เพื่อดูสถิติแยกปี
- * - การ์ดแสดงสิทธิ์และโควตาวันลาคงเหลือส่วนตัว (ลาป่วย, ลากิจส่วนตัว, ลาพักผ่อน + สะสมยกมา, ลาคลอด)
- * - ตารางประวัติการลาส่วนตัว พร้อมช่องค้นหาและตัวกรองประเภทการลา
+ * แยกข้อมูลปีงบประมาณ 2569 และ 2570 ออกจากกันอย่างชัดเจน
  */
 export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   staffList,
@@ -55,17 +57,21 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   const [filterLeaveType, setFilterLeaveType] = useState<string>('all');
   // ปีงบประมาณปัจจุบัน
   const currentFiscalYear = getCurrentFiscalYear();
-  const [localFiscalYear, setLocalFiscalYear] = useState<number | 'all'>(currentFiscalYear);
+  const [localFiscalYear, setLocalFiscalYear] = useState<number>(currentFiscalYear);
 
-  // ปีงบประมาณที่ใช้งานจริง
-  const activeFiscalYear = selectedFiscalYearProp !== undefined ? selectedFiscalYearProp : localFiscalYear;
+  // ปีงบประมาณที่ใช้งานจริง (แยกขาดแต่ละปีงบประมาณ ไม่ปนกัน)
+  const activeFiscalYear =
+    selectedFiscalYearProp && selectedFiscalYearProp !== 'all'
+      ? selectedFiscalYearProp
+      : localFiscalYear;
+
   // รายการปีงบประมาณทั้งหมดที่มีข้อมูล
   const availableFiscalYearsList = useMemo(() => {
     return availableFiscalYearsProp ?? getAvailableFiscalYears(records);
   }, [availableFiscalYearsProp, records]);
 
   // จัดการการเปลี่ยนปีงบประมาณ
-  const handleFiscalYearChange = (fy: number | 'all') => {
+  const handleFiscalYearChange = (fy: number) => {
     if (onSelectFiscalYearProp) {
       onSelectFiscalYearProp(fy);
     } else {
@@ -86,13 +92,12 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
     return summaries[0] || null;
   }, [currentStaff, records, activeFiscalYear]);
 
-  // กรองรายการประวัติการลาเฉพาะของบุคลากรท่านนี้ตามปีงบประมาณที่เลือก
+  // กรองรายการประวัติการลาเฉพาะของบุคลากรท่านนี้ตามปีงบประมาณที่เลือกเท่านั้น
   const myRecords = useMemo(() => {
     if (!currentStaff) return [];
     return records
       .filter((r) => {
         if (r.staffId !== currentStaff.id) return false;
-        if (activeFiscalYear === 'all') return true;
         return getFiscalYear(r.startDate) === activeFiscalYear;
       })
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
@@ -163,7 +168,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
     );
   }
 
-  // Quota metrics for selected staff
+  // Quota metrics for selected staff in the selected fiscal year
   const sickQuota = staffSummary?.quotas['sick'] ?? 60;
   const sickUsed = staffSummary?.usedByType['sick'] || 0;
   const sickRemain = staffSummary?.remainingByType['sick'] ?? sickQuota;
@@ -175,7 +180,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
   const vacQuota = staffSummary?.quotas['vacation'] ?? 10;
   const vacUsed = staffSummary?.usedByType['vacation'] || 0;
   const vacRemain = staffSummary?.remainingByType['vacation'] ?? vacQuota;
-  const carriedOver = currentStaff.carriedOverVacationDays || 0;
+  const carriedOver = staffSummary?.carriedOverVacationDays || 0;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-5 animate-in fade-in duration-200 pr-1">
@@ -191,7 +196,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
                 {currentStaff.name}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {activeFiscalYear !== 'all' ? `ปีงบประมาณ ${activeFiscalYear}` : 'ทุกปีงบประมาณ'}
+                {formatFiscalYearLabel(activeFiscalYear, true)}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
@@ -208,23 +213,27 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
           {/* Fiscal Year Switcher */}
           <div>
             <label className="block text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold mb-1">
-              ปีงบประมาณ:
+              ปีงบประมาณ (แยกข้อมูลรายปี):
             </label>
-            <select
-              value={activeFiscalYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                handleFiscalYearChange(val === 'all' ? 'all' : parseInt(val, 10));
-              }}
-              className="w-full sm:w-44 px-3 py-2 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-            >
-              <option value="all">ทุกปีงบประมาณ (ทั้งหมด)</option>
-              {availableFiscalYearsList.map((fy) => (
-                <option key={fy} value={fy}>
-                  {formatFiscalYearLabel(fy)}
-                </option>
-              ))}
-            </select>
+            <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+              {availableFiscalYearsList.map((fy) => {
+                const isSelected = activeFiscalYear === fy;
+                return (
+                  <button
+                    key={fy}
+                    type="button"
+                    onClick={() => handleFiscalYearChange(fy)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    ปีงบฯ {fy}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Switch staff selector */}
@@ -254,7 +263,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase">
-              วันลาพักผ่อน
+              วันลาพักผ่อน (ปีงบฯ {activeFiscalYear})
             </span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
               <Sparkles className="w-4 h-4" />
@@ -281,7 +290,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-rose-800 dark:text-rose-400 uppercase">
-              วันลาป่วย
+              วันลาป่วย (ปีงบฯ {activeFiscalYear})
             </span>
             <div className="p-2 bg-rose-50 dark:bg-rose-950/60 rounded-xl text-rose-600 dark:text-rose-400">
               <ShieldAlert className="w-4 h-4" />
@@ -303,7 +312,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-800 dark:text-blue-400 uppercase">
-              วันลากิจ
+              วันลากิจ (ปีงบฯ {activeFiscalYear})
             </span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400">
               <Calendar className="w-4 h-4" />
@@ -329,10 +338,10 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>ประวัติการลาของฉัน</span>
+              <span>ประวัติการลาของฉัน (ปีงบประมาณ {activeFiscalYear})</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              รายการวันลาที่บันทึกไว้ในระบบทั้งหมด ({myRecords.length} รายการ)
+              รายการวันลาเฉพาะในปีงบประมาณ {activeFiscalYear} ({myRecords.length} รายการ)
             </p>
           </div>
 
@@ -372,11 +381,11 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
               <Calendar className="w-12 h-12 mx-auto mb-3 stroke-[1.5] text-slate-300 dark:text-slate-600" />
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 {myRecords.length === 0
-                  ? 'ยังไม่มีประวัติการลาในระบบ'
+                  ? `ยังไม่มีประวัติการลาในปีงบประมาณ ${activeFiscalYear}`
                   : 'ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา'}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                เมื่อผู้ดูแลระบบบันทึกการลา รายการจะปรากฏในตารางนี้โดยอัตโนมัติ
+                สามารถกดสลับปีงบประมาณ (เช่น ปีงบฯ 2569 หรือ 2570) ที่ด้านบนเพื่อดูประวัติของปีอื่นได้
               </p>
             </div>
           ) : (
@@ -502,7 +511,7 @@ export const MyLeaveView: React.FC<MyLeaveViewProps> = ({
           <span className="font-semibold text-slate-700 dark:text-slate-300">
             คำแนะนำสำหรับบุคลากร:
           </span>{' '}
-          หน้าจอนี้แสดงข้อมูลสิทธิ์วันลาและประวัติการลาส่วนบุคคลของท่าน เพื่อตรวจสอบยอดคงเหลือ
+          หน้าจอนี้แสดงข้อมูลสิทธิ์วันลาและประวัติการลาส่วนบุคคลของท่านแยกตามปีงบประมาณ
           หากต้องการยื่นใบลา แก้ไขข้อมูล หรือตรวจสอบสิทธิ์เพิ่มเติม
           กรุณาติดต่อผู้ดูแลระบบ (งานการเจ้าหน้าที่ / ฝ่ายบริหารทั่วไป)
         </div>

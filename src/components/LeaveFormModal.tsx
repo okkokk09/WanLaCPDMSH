@@ -3,7 +3,7 @@ import { X, Calendar, AlertTriangle, CheckCircle2, Clock, Sparkles } from 'lucid
 import confetti from 'canvas-confetti';
 import type { Staff, LeaveRecord, LeaveTypeId, LeavePeriod } from '../types';
 import { LEAVE_TYPES } from '../utils/constants';
-import { toDateString, formatThaiDateShort, getLeaveDaysBreakdown } from '../utils/dateUtils';
+import { toDateString, formatThaiDateShort, getLeaveDaysBreakdown, getFiscalYear } from '../utils/dateUtils';
 import { calculateStaffSummaries } from '../utils/storage';
 
 /**
@@ -22,10 +22,10 @@ interface LeaveFormModalProps {
 /**
  * คอมโพเนนต์หน้าต่าง Modal บันทึก/แก้ไขข้อมูลการลา (LeaveFormModal)
  * มีฟังก์ชันเด่น:
- * 1. ตรวจสอบโควตาวันลาคงเหลือของบุคลากรที่เลือกแบบเรียลไทม์
+ * 1. ตรวจสอบโควตาวันลาคงเหลือของบุคลากรที่เลือกแบบเรียลไทม์ แยกตามปีงบประมาณของวันที่ลา
  * 2. คำนวณวันลาอัตโนมัติ โดยหักวันหยุดเสาร์-อาทิตย์ และวันหยุดนักขัตฤกษ์ พ.ศ. 2569–2571
  * 3. แสดงแถบรายละเอียดชื่อวันหยุดราชการที่ได้รับการยกเว้น
- * 4. แจ้งเตือนยืนยันหากขอลาเกินสิทธิ์คงเหลือ
+ * 4. แจ้งเตือนหากขอลาข้ามปีงบประมาณ หรือลาเกินสิทธิ์คงเหลือ
  */
 export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
   isOpen,
@@ -76,25 +76,35 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     }
   }, [isOpen, initialRecord, staffList, defaultDate]);
 
-  // คำนวณสรุปสถิติวันลาของบุคลากรทุกคนเพื่อนำมาตรวจสอบโควตา
+  // คำนวณปีงบประมาณของวันที่เริ่มลาและสิ้นสุดลา
+  const startFiscalYear = useMemo(() => getFiscalYear(startDate), [startDate]);
+  const endFiscalYear = useMemo(() => getFiscalYear(endDate), [endDate]);
+  const isCrossFiscalYear = startFiscalYear !== endFiscalYear;
+
+  // คำนวณสรุปสถิติวันลาของบุคลากรทุกคนแยกตามปีงบประมาณของวันที่เริ่มลา (ไม่นำปีงบประมาณอื่นมาปน)
   const staffSummaries = useMemo(() => {
-    return calculateStaffSummaries(staffList, existingRecords);
-  }, [staffList, existingRecords]);
+    return calculateStaffSummaries(staffList, existingRecords, startFiscalYear);
+  }, [staffList, existingRecords, startFiscalYear]);
 
   // สรุปสถิติวันลาของบุคลากรที่เลือกในฟอร์มปัจจุบัน
   const currentSummary = useMemo(() => {
     return staffSummaries.find((s) => s.staff.id === staffId);
   }, [staffSummaries, staffId]);
 
-  // วันลาคงเหลือสำหรับประเภทการลาที่กำลังเลือก (หากเป็นการแก้ไข ให้บวกคืนวันลาของใบลาเดิม)
+  // วันลาคงเหลือสำหรับประเภทการลาที่กำลังเลือก (หากเป็นการแก้ไขในปีงบฯ เดียวกัน ให้บวกคืนวันลาของใบลาเดิม)
   const remainingDays = useMemo(() => {
     if (!currentSummary) return 0;
     let extra = 0;
-    if (initialRecord && initialRecord.staffId === staffId && initialRecord.leaveTypeId === leaveTypeId) {
+    if (
+      initialRecord &&
+      initialRecord.staffId === staffId &&
+      initialRecord.leaveTypeId === leaveTypeId &&
+      getFiscalYear(initialRecord.startDate) === startFiscalYear
+    ) {
       extra = initialRecord.daysCount;
     }
     return (currentSummary.remainingByType[leaveTypeId] ?? 0) + extra;
-  }, [currentSummary, leaveTypeId, initialRecord, staffId]);
+  }, [currentSummary, leaveTypeId, initialRecord, staffId, startFiscalYear]);
 
   // คำนวณรายละเอียดวันลาจริง และวันหยุดนักขัตฤกษ์ที่ตกอยู่ในช่วงวันที่เลือก
   const breakdown = useMemo(() => {
@@ -122,6 +132,12 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
       alert('กรุณาเลือกบุคลากร');
       return;
     }
+    if (isCrossFiscalYear) {
+      alert(
+        `ไม่สามารถบันทึกวันลาข้ามปีงบประมาณได้ (เริ่มในปีงบฯ ${startFiscalYear} และสิ้นสุดในปีงบฯ ${endFiscalYear})\nกรุณาแยกบันทึกใบลาออกเป็นแต่ละปีงบประมาณ (ตัดรอบที่วันที่ 30 กันยายน และ 1 ตุลาคม)`
+      );
+      return;
+    }
     if (calculatedDays <= 0) {
       alert('จำนวนวันลาต้องมากกว่า 0 วัน (กรุณาตรวจสอบช่วงวันที่)');
       return;
@@ -130,7 +146,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
     // กรณีขอลาเกินสิทธิ์ แสดงกล่องข้อความยืนยันก่อนบันทึก
     if (isOverQuota) {
       const confirmOver = window.confirm(
-        `คำเตือน: จำนวนวันลาที่ขอ (${calculatedDays} วัน) เกินสิทธิ์คงเหลือ (${remainingDays} วัน)\nคุณยังคงต้องการบันทึกการลานี้หรือไม่?`
+        `คำเตือน: จำนวนวันลาที่ขอ (${calculatedDays} วัน) เกินสิทธิ์คงเหลือของปีงบประมาณ ${startFiscalYear} (${remainingDays} วัน)\nคุณยังคงต้องการบันทึกการลานี้หรือไม่?`
       );
       if (!confirmOver) return;
     }
@@ -180,11 +196,16 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">
-                {initialRecord ? 'แก้ไขบันทึกการลา' : 'บันทึกการลาใหม่'}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">
+                  {initialRecord ? 'แก้ไขบันทึกการลา' : 'บันทึกการลาใหม่'}
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500 text-white shadow-2xs">
+                  ปีงบฯ {startFiscalYear}
+                </span>
+              </div>
               <p className="text-xs text-indigo-100">
-                กรอกข้อมูลการลาและตรวจสอบยอดวันลาคงเหลืออัตโนมัติ
+                คำนวณโควตาแยกตามปีงบประมาณ {startFiscalYear} อัตโนมัติ
               </p>
             </div>
           </div>
@@ -222,13 +243,19 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
 
           {/* Step 2: Select Leave Type */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              ประเภทการลา <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                ประเภทการลา <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                สิทธิ์คงเหลือของปีงบประมาณ {startFiscalYear}
+              </span>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {LEAVE_TYPES.map((type) => {
                 const isSelected = leaveTypeId === type.id;
                 const quotaRemain = currentSummary?.remainingByType[type.id] ?? type.defaultQuota;
+                const usedInFY = currentSummary?.usedByType[type.id] ?? 0;
                 return (
                   <button
                     key={type.id}
@@ -245,8 +272,9 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                       <span className={`w-2 h-2 rounded-full ${type.color.dot}`} />
                     </div>
                     <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">{type.name}</div>
-                    <div className="mt-1 text-[11px] font-medium text-indigo-700 dark:text-indigo-400">
-                      เหลือ {quotaRemain} วัน
+                    <div className="mt-1 text-[11px] font-medium text-indigo-700 dark:text-indigo-400 flex items-center justify-between">
+                      <span>เหลือ {quotaRemain} วัน</span>
+                      {staffId && <span className="text-[10px] text-slate-400">(ใช้ {usedInFY})</span>}
                     </div>
                   </button>
                 );
@@ -268,7 +296,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                 required
               />
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
-                {formatThaiDateShort(startDate)}
+                {formatThaiDateShort(startDate)} (ปีงบฯ {startFiscalYear})
               </span>
             </div>
 
@@ -285,10 +313,23 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
                 required
               />
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
-                {formatThaiDateShort(endDate)}
+                {formatThaiDateShort(endDate)} (ปีงบฯ {endFiscalYear})
               </span>
             </div>
           </div>
+
+          {/* Cross Fiscal Year Warning */}
+          {isCrossFiscalYear && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl flex items-start gap-2.5 text-xs text-rose-800 dark:text-rose-200">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">ไม่สามารถบันทึกวันลาข้ามปีงบประมาณได้</span>
+                <p className="mt-0.5">
+                  วันที่เริ่มลาอยู่ใน <b>ปีงบประมาณ {startFiscalYear}</b> แต่วันที่สิ้นสุดอยู่ใน <b>ปีงบประมาณ {endFiscalYear}</b> กรุณาแยกบันทึกรายการลาของแต่ละปีงบประมาณออกจากกัน
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Options: Skip weekends & holidays */}
           <div className="space-y-2 pt-1">
@@ -349,15 +390,15 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
           {/* Quota warning or status info */}
           {!staffId ? (
             <div className="p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>💡 กรุณาเลือกบุคลากรเพื่อตรวจสอบโควตาวันลาคงเหลือ</span>
+              <span>💡 กรุณาเลือกบุคลากรเพื่อตรวจสอบโควตาวันลาคงเหลือของปีงบประมาณ {startFiscalYear}</span>
             </div>
           ) : isOverQuota ? (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">คำเตือน: ลาเกินโควตาคงเหลือ</span>
+                <span className="font-bold">คำเตือน: ลาเกินโควตาคงเหลือ (ปีงบฯ {startFiscalYear})</span>
                 <p className="mt-0.5">
-                  โควตาคงเหลือปัจจุบันคือ <b>{remainingDays} วัน</b> แต่ขอลา <b>{calculatedDays} วัน</b> (เกินมา {calculatedDays - remainingDays} วัน)
+                  โควตาคงเหลือของปีงบประมาณ {startFiscalYear} คือ <b>{remainingDays} วัน</b> แต่ขอลา <b>{calculatedDays} วัน</b> (เกินมา {calculatedDays - remainingDays} วัน)
                 </p>
               </div>
             </div>
@@ -365,7 +406,7 @@ export const LeaveFormModal: React.FC<LeaveFormModalProps> = ({
             <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-200">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>โควตาคงเหลือเพียงพอ (คงเหลือ {remainingDays} วัน)</span>
+                <span>โควตาปีงบฯ {startFiscalYear} เพียงพอ (คงเหลือ {remainingDays} วัน)</span>
               </div>
               <span className="font-medium">หลังลาจะเหลือ {Math.max(0, remainingDays - calculatedDays)} วัน</span>
             </div>
